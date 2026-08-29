@@ -1,6 +1,6 @@
 'use client'
 
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Center, OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -83,6 +83,15 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef }: { color: strin
 
 useGLTF.preload(SHIRT_MODEL_URL)
 
+function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) {
+  useFrame((state) => {
+    state.camera.position.lerp(new THREE.Vector3(0, 0, zoomLevel), 0.1)
+    state.camera.updateProjectionMatrix()
+    controlsRef.current?.update()
+  })
+  return null
+}
+
 function Scene({ color, drawing, setDrawing, zoomLevel, onZoomIn, onZoomOut }: { color: string; drawing: boolean; setDrawing: (v: boolean) => void; zoomLevel: number; onZoomIn: () => void; onZoomOut: () => void }) {
   const groupRef = useRef<THREE.Group>(null)
   const controlsRef = useRef<any>(null)
@@ -94,6 +103,7 @@ function Scene({ color, drawing, setDrawing, zoomLevel, onZoomIn, onZoomOut }: {
       <directionalLight castShadow position={[4, 6, 5]} intensity={2.0} shadow-mapSize={[2048, 2048]} />
       <directionalLight position={[-4, 2, 2]} intensity={1.1} color="#d7eadb" />
       <Environment preset="studio" />
+      <CameraController zoomLevel={zoomLevel} controlsRef={controlsRef} />
       <Suspense fallback={null}>
         <Center disableY={false} disableX={false} disableZ={false}>
           <ShirtMesh color={color} drawing={drawing} onDrawingChange={setDrawing} groupRef={groupRef} />
