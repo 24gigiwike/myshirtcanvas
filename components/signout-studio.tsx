@@ -5,7 +5,7 @@ import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 
-const SHIRT_MODEL_URL = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Shirt-Z9ZlIaOVRO2iZ1DYQdQ4OP3hFF9rxY.glb'
+const SHIRT_MODEL_URL = 'https://res.cloudinary.com/dtkluxukm/image/upload/v1787995625/Shirt_nep9xf.glb'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Coffee, Info, RotateCcw, Sparkles } from 'lucide-react'
 
 const COLORS = [
@@ -69,7 +69,7 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef }: { color: strin
   }, [color, texture])
 
   return (
-    <group ref={groupRef} rotation={[0.02, 0, 0]} scale={2.35}>
+    <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[2, 2, 2]}>
       <primitive
         object={shirt}
         onPointerDown={(e: any) => { e.stopPropagation(); if (e.uv) { onDrawingChange(true); last.current = null; paint(e.uv) } }}
@@ -94,7 +94,7 @@ function Scene({ color, drawing, setDrawing }: { color: string; drawing: boolean
       <directionalLight castShadow position={[4, 6, 5]} intensity={2.0} shadow-mapSize={[2048, 2048]} />
       <directionalLight position={[-4, 2, 2]} intensity={1.1} color="#d7eadb" />
       <Environment preset="studio" />
-      <Suspense fallback={<mesh position={[0, 0, 0]}><boxGeometry args={[2.8, 3.4, 0.45]} /><meshStandardMaterial color="white" /></mesh>}>
+      <Suspense fallback={null}>
         <ShirtMesh color={color} drawing={drawing} onDrawingChange={setDrawing} groupRef={groupRef} />
       </Suspense>
       <OrbitControls ref={controlsRef} enabled={!drawing} enablePan={false} minDistance={5} maxDistance={9} minPolarAngle={Math.PI / 2.45} maxPolarAngle={Math.PI / 1.7} dampingFactor={0.08} enableDamping />
