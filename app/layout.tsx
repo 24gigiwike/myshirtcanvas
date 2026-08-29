@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'Sign-Out Studio | Leave Your Mark',
+  description: 'A digital Nigerian university sign-out shirt for campus memories, signatures and goodbyes.',
   generator: 'v0.app',
   icons: {
     icon: [

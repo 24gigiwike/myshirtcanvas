@@ -47,8 +47,8 @@
 
 :root {
   color-scheme: light;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.965 0.012 112);
+  --foreground: oklch(0.19 0.035 155);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -159,5 +159,13 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: Arial, Helvetica, sans-serif;
   }
 }
+
+.font-serif { font-family: Georgia, 'Times New Roman', serif; }
+.font-mono { font-family: 'Courier New', monospace; }
+.control-button { @apply flex h-9 w-9 items-center justify-center rounded-xl bg-background text-foreground transition-colors hover:bg-[#16804b] hover:text-primary-foreground; }
+.marker { @apply h-7 w-7 rounded-full border-4 border-background shadow-sm transition-transform hover:scale-110; }
+.marker-active { @apply scale-110 ring-2 ring-[#16804b] ring-offset-2 ring-offset-background; }
+.tipping-card { @apply rounded-[1.75rem] border border-foreground/10 bg-background p-6 shadow-[0_18px_50px_-35px_rgba(20,50,30,.5)]; }
