@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment } from '@react-three/drei'
+import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Coffee, Info, RotateCcw, Sparkles } from 'lucide-react'
@@ -14,6 +14,8 @@ const COLORS = [
 ]
 
 function ShirtMesh({ color, drawing, onDrawingChange, groupRef }: { color: string; drawing: boolean; onDrawingChange: (value: boolean) => void; groupRef: React.RefObject<THREE.Group | null> }) {
+  const { scene } = useGLTF('/Shirt.glb')
+  const shirt = useMemo(() => scene.clone(true), [scene])
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 1024
@@ -29,6 +31,20 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef }: { color: strin
     return tex
   }, [])
   const last = useRef<THREE.Vector2 | null>(null)
+
+  useEffect(() => {
+    shirt.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return
+      object.castShadow = true
+      object.receiveShadow = true
+      const materials = Array.isArray(object.material) ? object.material : [object.material]
+      materials.forEach((material) => {
+        if (!('map' in material)) return
+        material.map = texture
+        material.needsUpdate = true
+      })
+    })
+  }, [shirt, texture])
 
   const paint = useCallback((uv: THREE.Vector2) => {
     const canvas = texture.image as HTMLCanvasElement
@@ -51,34 +67,19 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef }: { color: strin
   }, [color, texture])
 
   return (
-    <group ref={groupRef} rotation={[0.02, 0, 0]}>
-      <mesh castShadow position={[0, 0.15, 0]}>
-        <boxGeometry args={[2.7, 3.25, 0.38, 32, 32, 8]} />
-        <meshStandardMaterial color="#f7f7f3" roughness={0.92} />
-      </mesh>
-      <mesh castShadow position={[-1.72, 0.62, 0]} rotation={[0, 0, -0.12]}>
-        <capsuleGeometry args={[0.48, 1.3, 12, 24]} />
-        <meshStandardMaterial color="#f7f7f3" roughness={0.92} />
-      </mesh>
-      <mesh castShadow position={[1.72, 0.62, 0]} rotation={[0, 0, 0.12]}>
-        <capsuleGeometry args={[0.48, 1.3, 12, 24]} />
-        <meshStandardMaterial color="#f7f7f3" roughness={0.92} />
-      </mesh>
-      <mesh position={[0, 1.62, 0.205]} rotation={[0, 0, 0]}>
-        <torusGeometry args={[0.52, 0.13, 16, 48, Math.PI * 1.75]} />
-        <meshStandardMaterial color="#e2e2dc" roughness={1} />
-      </mesh>
-      <mesh position={[0, 0.18, 0.205]} onPointerDown={(e) => { e.stopPropagation(); if (e.uv) { onDrawingChange(true); last.current = null; paint(e.uv) } }} onPointerMove={(e) => { if (drawing && e.uv) { e.stopPropagation(); paint(e.uv) } }} onPointerUp={(e) => { e.stopPropagation(); onDrawingChange(false); last.current = null }} onPointerLeave={() => { if (drawing) { onDrawingChange(false); last.current = null } }}>
-        <planeGeometry args={[2.48, 3.03, 1, 1]} />
-        <meshBasicMaterial map={texture} transparent opacity={0.99} />
-      </mesh>
-      <mesh position={[0, 0.18, 0.22]}>
-        <planeGeometry args={[2.48, 3.03]} />
-        <meshBasicMaterial map={texture} transparent opacity={0.001} depthWrite={false} />
-      </mesh>
+    <group ref={groupRef} rotation={[0.02, 0, 0]} scale={2.35}>
+      <primitive
+        object={shirt}
+        onPointerDown={(e: any) => { e.stopPropagation(); if (e.uv) { onDrawingChange(true); last.current = null; paint(e.uv) } }}
+        onPointerMove={(e: any) => { if (drawing && e.uv) { e.stopPropagation(); paint(e.uv) } }}
+        onPointerUp={(e: any) => { e.stopPropagation(); onDrawingChange(false); last.current = null }}
+        onPointerOut={() => { if (drawing) { onDrawingChange(false); last.current = null } }}
+      />
     </group>
   )
 }
+
+useGLTF.preload('/Shirt.glb')
 
 function Scene({ color, drawing, setDrawing }: { color: string; drawing: boolean; setDrawing: (v: boolean) => void }) {
   const groupRef = useRef<THREE.Group>(null)
