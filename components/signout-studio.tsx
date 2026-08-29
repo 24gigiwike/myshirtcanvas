@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
+import { Center, OrbitControls, Environment, useGLTF } from '@react-three/drei'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 
@@ -69,7 +69,7 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef }: { color: strin
   }, [color, texture])
 
   return (
-    <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[2, 2, 2]}>
+    <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[1, 1, 1]}>
       <primitive
         object={shirt}
         onPointerDown={(e: any) => { e.stopPropagation(); if (e.uv) { onDrawingChange(true); last.current = null; paint(e.uv) } }}
@@ -88,16 +88,18 @@ function Scene({ color, drawing, setDrawing }: { color: string; drawing: boolean
   const controlsRef = useRef<any>(null)
   const rotate = (axis: 'x' | 'y', amount: number) => { if (groupRef.current) groupRef.current.rotation[axis] += amount }
   return <div className="relative h-full w-full">
-    <Canvas shadows camera={{ position: [0, 0.2, 7.4], fov: 34 }} onPointerMissed={() => setDrawing(false)}>
+    <Canvas shadows camera={{ position: [0, 0, 3], fov: 45 }} onPointerMissed={() => setDrawing(false)}>
       <color attach="background" args={['#e9ede7']} />
       <ambientLight intensity={1.5} />
       <directionalLight castShadow position={[4, 6, 5]} intensity={2.0} shadow-mapSize={[2048, 2048]} />
       <directionalLight position={[-4, 2, 2]} intensity={1.1} color="#d7eadb" />
       <Environment preset="studio" />
       <Suspense fallback={null}>
-        <ShirtMesh color={color} drawing={drawing} onDrawingChange={setDrawing} groupRef={groupRef} />
+        <Center disableY={false} disableX={false} disableZ={false}>
+          <ShirtMesh color={color} drawing={drawing} onDrawingChange={setDrawing} groupRef={groupRef} />
+        </Center>
       </Suspense>
-      <OrbitControls ref={controlsRef} enabled={!drawing} enablePan={false} minDistance={5} maxDistance={9} minPolarAngle={Math.PI / 2.45} maxPolarAngle={Math.PI / 1.7} dampingFactor={0.08} enableDamping />
+      <OrbitControls ref={controlsRef} makeDefault enabled={!drawing} enablePan={false} minDistance={5} maxDistance={9} minPolarAngle={Math.PI / 2.45} maxPolarAngle={Math.PI / 1.7} dampingFactor={0.08} enableDamping />
     </Canvas>
     <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center">
       <div className="rounded-full border border-foreground/10 bg-background/75 px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">{drawing ? 'Writing on fabric…' : 'Drag to look around · Draw directly on the shirt'}</div>
