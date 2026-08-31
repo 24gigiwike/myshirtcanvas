@@ -169,3 +169,4 @@
 .marker { @apply h-7 w-7 rounded-full border-4 border-background shadow-sm transition-transform hover:scale-110; }
 .marker-active { @apply scale-110 ring-2 ring-[#16804b] ring-offset-2 ring-offset-background; }
 .tipping-card { @apply rounded-[1.75rem] border border-foreground/10 bg-background p-6 shadow-[0_18px_50px_-35px_rgba(20,50,30,.5)]; }
+.studio-control { @apply flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white transition hover:bg-white hover:text-[#087f7b] disabled:opacity-40; }
