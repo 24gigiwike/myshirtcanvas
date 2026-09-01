@@ -17,16 +17,60 @@ const COLORS = [
 function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPosition = () => {} }: { color: string; drawing: boolean; onDrawingChange: (value: boolean) => void; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition?: (x: number, y: number) => void }) {
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024
-    const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#f9f9f6'; ctx.fillRect(0, 0, 1024, 1024)
-    const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; return tex
+  const canvasWidth = 1024
+  const canvasHeight = 1024
+  const canvasTexture = useMemo(() => {
+    const canvas = document.createElement('canvas'); canvas.width = canvasWidth; canvas.height = canvasHeight
+    const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#f9f9f6'; ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+    const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; tex.needsUpdate = true; return tex
   }, [])
-  const textureRef = useRef<THREE.CanvasTexture>(texture)
+  const canvasTextureRef = useRef<THREE.CanvasTexture>(canvasTexture)
+  canvasTextureRef.current = canvasTexture
   const last = useRef<THREE.Vector2 | null>(null)
-  useEffect(() => { shirt.traverse((object) => { if (!(object instanceof THREE.Mesh)) return; object.castShadow = true; object.receiveShadow = true; const materials = Array.isArray(object.material) ? object.material : [object.material]; materials.forEach((material) => { if ('map' in material) { material.map = texture; material.needsUpdate = true } }) }) }, [shirt, texture])
-  const paint = useCallback((uv: THREE.Vector2) => { const canvas = texture.image as HTMLCanvasElement; const ctx = canvas.getContext('2d')!; const next = new THREE.Vector2(uv.x * canvas.width, (1 - uv.y) * canvas.height); ctx.strokeStyle = color; ctx.lineWidth = 15; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); if (last.current) { ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(next.x, next.y); ctx.stroke() } else { ctx.arc(next.x, next.y, 7.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill() } last.current = next; textureRef.current.needsUpdate = true }, [color, texture])
-  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={(e: any) => { e.stopPropagation(); onPointerPosition(e.clientX, e.clientY); if (e.uv) { onDrawingChange(true); last.current = null; paint(new THREE.Vector2(e.uv.x, e.uv.y)) } }} onPointerMove={(e: any) => { onPointerPosition(e.clientX, e.clientY); if (drawing && e.uv) { e.stopPropagation(); paint(new THREE.Vector2(e.uv.x, e.uv.y)) } }} onPointerUp={(e: any) => { e.stopPropagation(); onDrawingChange(false); last.current = null }} onPointerOut={() => { if (drawing) { onDrawingChange(false); last.current = null } }} /></group>
+  const drawingRef = useRef(drawing)
+  drawingRef.current = drawing
+  useEffect(() => {
+    shirt.traverse((child) => {
+      if (!(child as THREE.Mesh).isMesh) return
+      const mesh = child as THREE.Mesh
+      mesh.castShadow = true
+      mesh.receiveShadow = true
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      materials.forEach((material) => {
+        if ('map' in material) {
+          material.map = canvasTexture
+          material.needsUpdate = true
+        }
+      })
+    })
+  }, [shirt, canvasTexture])
+  const paint = useCallback((x: number, y: number) => {
+    const canvas = canvasTexture.image as HTMLCanvasElement
+    const ctx = canvas.getContext('2d')!
+    const next = new THREE.Vector2(x, y)
+    ctx.strokeStyle = color
+    ctx.fillStyle = color
+    ctx.lineWidth = 15
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    if (last.current) {
+      ctx.moveTo(last.current.x, last.current.y)
+      ctx.lineTo(next.x, next.y)
+      ctx.stroke()
+    } else {
+      ctx.arc(next.x, next.y, 7.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    last.current = next
+    canvasTextureRef.current.needsUpdate = true
+  }, [color, canvasTexture])
+  const uvToCanvas = (uv: THREE.Vector2) => {
+    const x = uv.x * canvasWidth
+    const y = (1 - uv.y) * canvasHeight
+    return { x, y }
+  }
+  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={(e: any) => { e.stopPropagation(); (e.nativeEvent?.target as Element | undefined)?.setPointerCapture?.(e.pointerId); onPointerPosition(e.clientX, e.clientY); if (e.uv) { drawingRef.current = true; onDrawingChange(true); last.current = null; const { x, y } = uvToCanvas(e.uv); paint(x, y) } }} onPointerMove={(e: any) => { onPointerPosition(e.clientX, e.clientY); if ((drawing || drawingRef.current) && e.uv) { e.stopPropagation(); const { x, y } = uvToCanvas(e.uv); paint(x, y) } }} onPointerUp={(e: any) => { e.stopPropagation(); (e.nativeEvent?.target as Element | undefined)?.releasePointerCapture?.(e.pointerId); drawingRef.current = false; onDrawingChange(false); last.current = null }} onPointerOut={(e: any) => { if (e.buttons === 0 && (drawing || drawingRef.current)) { drawingRef.current = false; onDrawingChange(false); last.current = null } }} /></group>
 }
 function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) { const target = useMemo(() => new THREE.Vector3(), []); useFrame((state) => { target.set(0, 0, zoomLevel); state.camera.position.lerp(target, 0.1); state.camera.updateProjectionMatrix(); controlsRef.current?.update() }); return null }
 
