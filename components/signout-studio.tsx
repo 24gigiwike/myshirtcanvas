@@ -17,12 +17,15 @@ const COLORS = [
 function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPosition = () => {}, isPlacingStamp, stampMessage, stampColor, onStampPlaced }: { color: string; drawing: boolean; onDrawingChange: (value: boolean) => void; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition?: (x: number, y: number) => void; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void }) {
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024
-    const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#f9f9f6'; ctx.fillRect(0, 0, 1024, 1024)
-    const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; return tex
+  const canvasWidth = 1024
+  const canvasHeight = 1024
+  const canvasTexture = useMemo(() => {
+    const canvas = document.createElement('canvas'); canvas.width = canvasWidth; canvas.height = canvasHeight
+    const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#f9f9f6'; ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+    const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; tex.needsUpdate = true; return tex
   }, [])
-  const textureRef = useRef<THREE.CanvasTexture>(texture)
+  const canvasTextureRef = useRef<THREE.CanvasTexture>(canvasTexture)
+  canvasTextureRef.current = canvasTexture
   const last = useRef<THREE.Vector2 | null>(null)
   useEffect(() => { shirt.traverse((object) => { if (!(object instanceof THREE.Mesh)) return; object.castShadow = true; object.receiveShadow = true; const materials = Array.isArray(object.material) ? object.material : [object.material]; materials.forEach((material) => { if ('map' in material) { material.map = texture; material.needsUpdate = true } }) }) }, [shirt, texture])
   const paint = useCallback((uv: THREE.Vector2) => { const canvas = texture.image as HTMLCanvasElement; const ctx = canvas.getContext('2d')!; const next = new THREE.Vector2(uv.x * canvas.width, (1 - uv.y) * canvas.height); ctx.strokeStyle = color; ctx.lineWidth = 15; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); if (last.current) { ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(next.x, next.y); ctx.stroke() } else { ctx.arc(next.x, next.y, 7.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill() } last.current = next; textureRef.current.needsUpdate = true }, [color, texture])
