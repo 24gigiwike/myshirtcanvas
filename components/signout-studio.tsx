@@ -14,7 +14,7 @@ const COLORS = [
   { name: 'Blue', value: '#2c62a8', ink: 'bg-[#2c62a8]' },
 ]
 
-function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPosition = () => {} }: { color: string; drawing: boolean; onDrawingChange: (value: boolean) => void; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition?: (x: number, y: number) => void }) {
+function ShirtMesh({ color, drawing, onDrawingChange, groupRef, controlsRef, onPointerPosition = () => {} }: { color: string; drawing: boolean; onDrawingChange: (value: boolean) => void; groupRef: React.RefObject<THREE.Group | null>; controlsRef: React.RefObject<any>; onPointerPosition?: (x: number, y: number) => void }) {
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
   const canvasWidth = 1024
@@ -27,8 +27,7 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPositio
   const canvasTextureRef = useRef<THREE.CanvasTexture>(canvasTexture)
   canvasTextureRef.current = canvasTexture
   const last = useRef<THREE.Vector2 | null>(null)
-  const drawingRef = useRef(drawing)
-  drawingRef.current = drawing
+  const drawingRef = useRef(false)
   useEffect(() => {
     shirt.traverse((child) => {
       if (!(child as THREE.Mesh).isMesh) return
@@ -36,12 +35,14 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPositio
       mesh.castShadow = true
       mesh.receiveShadow = true
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-      materials.forEach((material) => {
-        if ('map' in material) {
-          material.map = canvasTexture
-          material.needsUpdate = true
-        }
+      const next = materials.map((material) => {
+        if (!('map' in material)) return material
+        const cloned = material.clone()
+        cloned.map = canvasTexture
+        cloned.needsUpdate = true
+        return cloned
       })
+      mesh.material = Array.isArray(mesh.material) ? next : next[0]
     })
   }, [shirt, canvasTexture])
   const paint = useCallback((x: number, y: number) => {
@@ -65,18 +66,47 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPositio
     last.current = next
     canvasTextureRef.current.needsUpdate = true
   }, [color, canvasTexture])
-  const uvToCanvas = (uv: THREE.Vector2) => {
-    const x = uv.x * canvasWidth
-    const y = (1 - uv.y) * canvasHeight
-    return { x, y }
-  }
-  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={(e: any) => { e.stopPropagation(); (e.nativeEvent?.target as Element | undefined)?.setPointerCapture?.(e.pointerId); onPointerPosition(e.clientX, e.clientY); if (e.uv) { drawingRef.current = true; onDrawingChange(true); last.current = null; const { x, y } = uvToCanvas(e.uv); paint(x, y) } }} onPointerMove={(e: any) => { onPointerPosition(e.clientX, e.clientY); if ((drawing || drawingRef.current) && e.uv) { e.stopPropagation(); const { x, y } = uvToCanvas(e.uv); paint(x, y) } }} onPointerUp={(e: any) => { e.stopPropagation(); (e.nativeEvent?.target as Element | undefined)?.releasePointerCapture?.(e.pointerId); drawingRef.current = false; onDrawingChange(false); last.current = null }} onPointerOut={(e: any) => { if (e.buttons === 0 && (drawing || drawingRef.current)) { drawingRef.current = false; onDrawingChange(false); last.current = null } }} /></group>
+  return (
+    <group
+      ref={groupRef}
+      rotation={[0.02, 0, 0]}
+      scale={[0.42, 0.42, 0.42]}
+      onPointerDown={(e: any) => {
+        e.stopPropagation()
+        if (controlsRef.current) controlsRef.current.enabled = false
+        drawingRef.current = true
+        onDrawingChange(true)
+        last.current = null
+        onPointerPosition(e.clientX, e.clientY)
+        if (!e.uv) return
+        const x = e.uv.x * canvasWidth
+        const y = (1 - e.uv.y) * canvasHeight
+        paint(x, y)
+      }}
+      onPointerMove={(e: any) => {
+        onPointerPosition(e.clientX, e.clientY)
+        if (!(drawing || drawingRef.current) || !e.uv) return
+        e.stopPropagation()
+        const x = e.uv.x * canvasWidth
+        const y = (1 - e.uv.y) * canvasHeight
+        paint(x, y)
+      }}
+      onPointerUp={() => {
+        drawingRef.current = false
+        onDrawingChange(false)
+        last.current = null
+        if (controlsRef.current) controlsRef.current.enabled = true
+      }}
+    >
+      <primitive object={shirt} />
+    </group>
+  )
 }
 function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) { const target = useMemo(() => new THREE.Vector3(), []); useFrame((state) => { target.set(0, 0, zoomLevel); state.camera.position.lerp(target, 0.1); state.camera.updateProjectionMatrix(); controlsRef.current?.update() }); return null }
 
 function Scene({ color, drawing, setDrawing, zoomLevel, groupRef, onPointerPosition = () => {} }: { color: string; drawing: boolean; setDrawing: (v: boolean) => void; zoomLevel: number; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition?: (x: number, y: number) => void }) {
   const controlsRef = useRef<any>(null)
-  return <Canvas shadows camera={{ position: [0, 0, zoomLevel], fov: 45 }} onPointerMissed={() => setDrawing(false)}><color attach="background" args={['#0eb0ab']} /><ambientLight intensity={1.5} /><directionalLight castShadow position={[4, 6, 5]} intensity={2} /><Environment preset="studio" /><CameraController zoomLevel={zoomLevel} controlsRef={controlsRef} /><Suspense fallback={null}><Center disableY={false} disableX={false} disableZ={false}><ShirtMesh color={color} drawing={drawing} onDrawingChange={setDrawing} groupRef={groupRef} onPointerPosition={onPointerPosition} /></Center></Suspense><OrbitControls ref={controlsRef} makeDefault enabled={!drawing} enablePan={false} minDistance={1.5} maxDistance={8} enableDamping dampingFactor={0.08} /></Canvas>
+  return <Canvas shadows camera={{ position: [0, 0, zoomLevel], fov: 45 }} onPointerMissed={() => setDrawing(false)}><color attach="background" args={['#0eb0ab']} /><ambientLight intensity={1.5} /><directionalLight castShadow position={[4, 6, 5]} intensity={2} /><Environment preset="studio" /><CameraController zoomLevel={zoomLevel} controlsRef={controlsRef} /><Suspense fallback={null}><Center disableY={false} disableX={false} disableZ={false}><ShirtMesh color={color} drawing={drawing} onDrawingChange={setDrawing} groupRef={groupRef} controlsRef={controlsRef} onPointerPosition={onPointerPosition} /></Center></Suspense><OrbitControls ref={controlsRef} makeDefault enabled={!drawing} enablePan={false} minDistance={1.5} maxDistance={8} enableDamping dampingFactor={0.08} /></Canvas>
 }
 
 function Marker({ item, active, onClick }: { item: typeof COLORS[number]; active: boolean; onClick: () => void }) { return <button type="button" aria-label={`Use ${item.name} marker`} aria-pressed={active} onClick={onClick} className={`group relative flex h-10 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${active ? 'bg-white/20 ring-1 ring-white ring-offset-2 ring-offset-[#087f7b]' : 'hover:bg-white/10'}`}><span className={`relative h-9 w-2.5 rounded-b-full rounded-t-sm ${item.ink} shadow-[2px_4px_0_rgba(0,0,0,.18)]`}><span className="absolute -top-1 left-0 h-2 w-3 rounded-t-sm bg-white/50" /><span className="absolute -bottom-2 left-[3px] h-2 w-1.5 border-x-[3px] border-t-4 border-transparent border-t-current" /></span><span className="sr-only">{item.name}</span></button> }
