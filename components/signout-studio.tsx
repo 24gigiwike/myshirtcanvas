@@ -14,7 +14,7 @@ const COLORS = [
   { name: 'Blue', value: '#2c62a8', ink: 'bg-[#2c62a8]' },
 ]
 
-function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPosition }: { color: string; drawing: boolean; onDrawingChange: (value: boolean) => void; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition: (x: number, y: number) => void }) {
+function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPosition = () => {} }: { color: string; drawing: boolean; onDrawingChange: (value: boolean) => void; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition?: (x: number, y: number) => void }) {
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
   const texture = useMemo(() => {
@@ -30,7 +30,7 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPositio
 }
 function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) { const target = useMemo(() => new THREE.Vector3(), []); useFrame((state) => { target.set(0, 0, zoomLevel); state.camera.position.lerp(target, 0.1); state.camera.updateProjectionMatrix(); controlsRef.current?.update() }); return null }
 
-function Scene({ color, drawing, setDrawing, zoomLevel, groupRef, onPointerPosition }: { color: string; drawing: boolean; setDrawing: (v: boolean) => void; zoomLevel: number; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition: (x: number, y: number) => void }) {
+function Scene({ color, drawing, setDrawing, zoomLevel, groupRef, onPointerPosition = () => {} }: { color: string; drawing: boolean; setDrawing: (v: boolean) => void; zoomLevel: number; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition?: (x: number, y: number) => void }) {
   const controlsRef = useRef<any>(null)
   return <Canvas shadows camera={{ position: [0, 0, zoomLevel], fov: 45 }} onPointerMissed={() => setDrawing(false)}><color attach="background" args={['#0eb0ab']} /><ambientLight intensity={1.5} /><directionalLight castShadow position={[4, 6, 5]} intensity={2} /><Environment preset="studio" /><CameraController zoomLevel={zoomLevel} controlsRef={controlsRef} /><Suspense fallback={null}><Center disableY={false} disableX={false} disableZ={false}><ShirtMesh color={color} drawing={drawing} onDrawingChange={setDrawing} groupRef={groupRef} onPointerPosition={onPointerPosition} /></Center></Suspense><OrbitControls ref={controlsRef} makeDefault enabled={!drawing} enablePan={false} minDistance={1.5} maxDistance={8} enableDamping dampingFactor={0.08} /></Canvas>
 }
