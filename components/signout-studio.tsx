@@ -14,7 +14,7 @@ const COLORS = [
   { name: 'Blue', value: '#2c62a8', ink: 'bg-[#2c62a8]' },
 ]
 
-function ShirtMesh({ color, drawing, onDrawingChange, groupRef, controlsRef, onPointerPosition = () => {} }: { color: string; drawing: boolean; onDrawingChange: (value: boolean) => void; groupRef: React.RefObject<THREE.Group | null>; controlsRef: React.RefObject<any>; onPointerPosition?: (x: number, y: number) => void }) {
+function ShirtMesh({ color, drawing, onDrawingChange, groupRef, onPointerPosition = () => {}, isPlacingStamp, stampMessage, stampColor, onStampPlaced }: { color: string; drawing: boolean; onDrawingChange: (value: boolean) => void; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition?: (x: number, y: number) => void; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void }) {
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
   const canvasWidth = 1024
@@ -27,96 +27,28 @@ function ShirtMesh({ color, drawing, onDrawingChange, groupRef, controlsRef, onP
   const canvasTextureRef = useRef<THREE.CanvasTexture>(canvasTexture)
   canvasTextureRef.current = canvasTexture
   const last = useRef<THREE.Vector2 | null>(null)
-  const drawingRef = useRef(false)
-  useEffect(() => {
-    shirt.traverse((child) => {
-      if (!(child as THREE.Mesh).isMesh) return
-      const mesh = child as THREE.Mesh
-      mesh.castShadow = true
-      mesh.receiveShadow = true
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-      const next = materials.map((material) => {
-        if (!('map' in material)) return material
-        const cloned = material.clone()
-        cloned.map = canvasTexture
-        cloned.needsUpdate = true
-        return cloned
-      })
-      mesh.material = Array.isArray(mesh.material) ? next : next[0]
-    })
-  }, [shirt, canvasTexture])
-  const paint = useCallback((x: number, y: number) => {
-    const canvas = canvasTexture.image as HTMLCanvasElement
-    const ctx = canvas.getContext('2d')!
-    const next = new THREE.Vector2(x, y)
-    ctx.strokeStyle = color
-    ctx.fillStyle = color
-    ctx.lineWidth = 15
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.beginPath()
-    if (last.current) {
-      ctx.moveTo(last.current.x, last.current.y)
-      ctx.lineTo(next.x, next.y)
-      ctx.stroke()
-    } else {
-      ctx.arc(next.x, next.y, 7.5, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    last.current = next
-    canvasTextureRef.current.needsUpdate = true
-  }, [color, canvasTexture])
-  return (
-    <group
-      ref={groupRef}
-      rotation={[0.02, 0, 0]}
-      scale={[0.42, 0.42, 0.42]}
-      onPointerDown={(e: any) => {
-        e.stopPropagation()
-        if (controlsRef.current) controlsRef.current.enabled = false
-        drawingRef.current = true
-        onDrawingChange(true)
-        last.current = null
-        onPointerPosition(e.clientX, e.clientY)
-        if (!e.uv) return
-        const x = e.uv.x * canvasWidth
-        const y = (1 - e.uv.y) * canvasHeight
-        paint(x, y)
-      }}
-      onPointerMove={(e: any) => {
-        onPointerPosition(e.clientX, e.clientY)
-        if (!(drawing || drawingRef.current) || !e.uv) return
-        e.stopPropagation()
-        const x = e.uv.x * canvasWidth
-        const y = (1 - e.uv.y) * canvasHeight
-        paint(x, y)
-      }}
-      onPointerUp={() => {
-        drawingRef.current = false
-        onDrawingChange(false)
-        last.current = null
-        if (controlsRef.current) controlsRef.current.enabled = true
-      }}
-    >
-      <primitive object={shirt} />
-    </group>
-  )
+  useEffect(() => { shirt.traverse((object) => { if (!(object instanceof THREE.Mesh)) return; object.castShadow = true; object.receiveShadow = true; const materials = Array.isArray(object.material) ? object.material : [object.material]; materials.forEach((material) => { if ('map' in material) { material.map = texture; material.needsUpdate = true } }) }) }, [shirt, texture])
+  const paint = useCallback((uv: THREE.Vector2) => { const canvas = texture.image as HTMLCanvasElement; const ctx = canvas.getContext('2d')!; const next = new THREE.Vector2(uv.x * canvas.width, (1 - uv.y) * canvas.height); ctx.strokeStyle = color; ctx.lineWidth = 15; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); if (last.current) { ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(next.x, next.y); ctx.stroke() } else { ctx.arc(next.x, next.y, 7.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill() } last.current = next; textureRef.current.needsUpdate = true }, [color, texture])
+  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={(e: any) => { e.stopPropagation(); onPointerPosition(e.clientX, e.clientY); if (e.uv && isPlacingStamp) { const canvas = texture.image as HTMLCanvasElement; const ctx = canvas.getContext('2d')!; ctx.save(); ctx.fillStyle = stampColor; ctx.font = 'bold 28px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(stampMessage, e.uv.x * canvas.width, (1 - e.uv.y) * canvas.height); ctx.restore(); textureRef.current.needsUpdate = true; onStampPlaced(); } else if (e.uv) { onDrawingChange(true); last.current = null; paint(new THREE.Vector2(e.uv.x, e.uv.y)) } }} onPointerMove={(e: any) => { onPointerPosition(e.clientX, e.clientY); if (drawing && e.uv) { e.stopPropagation(); paint(new THREE.Vector2(e.uv.x, e.uv.y)) } }} onPointerUp={(e: any) => { e.stopPropagation(); onDrawingChange(false); last.current = null }} onPointerOut={() => { if (drawing) { onDrawingChange(false); last.current = null } }} /></group>
 }
 function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) { const target = useMemo(() => new THREE.Vector3(), []); useFrame((state) => { target.set(0, 0, zoomLevel); state.camera.position.lerp(target, 0.1); state.camera.updateProjectionMatrix(); controlsRef.current?.update() }); return null }
 
-function Scene({ color, drawing, setDrawing, zoomLevel, groupRef, onPointerPosition = () => {} }: { color: string; drawing: boolean; setDrawing: (v: boolean) => void; zoomLevel: number; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition?: (x: number, y: number) => void }) {
+function Scene({ color, drawing, setDrawing, zoomLevel, groupRef, onPointerPosition = () => {}, isPlacingStamp, stampMessage, stampColor, onStampPlaced }: { color: string; drawing: boolean; setDrawing: (v: boolean) => void; zoomLevel: number; groupRef: React.RefObject<THREE.Group | null>; onPointerPosition?: (x: number, y: number) => void; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void }) {
   const controlsRef = useRef<any>(null)
-  return <Canvas shadows camera={{ position: [0, 0, zoomLevel], fov: 45 }} onPointerMissed={() => setDrawing(false)}><color attach="background" args={['#0eb0ab']} /><ambientLight intensity={1.5} /><directionalLight castShadow position={[4, 6, 5]} intensity={2} /><Environment preset="studio" /><CameraController zoomLevel={zoomLevel} controlsRef={controlsRef} /><Suspense fallback={null}><Center disableY={false} disableX={false} disableZ={false}><ShirtMesh color={color} drawing={drawing} onDrawingChange={setDrawing} groupRef={groupRef} controlsRef={controlsRef} onPointerPosition={onPointerPosition} /></Center></Suspense><OrbitControls ref={controlsRef} makeDefault enabled={!drawing} enablePan={false} minDistance={1.5} maxDistance={8} enableDamping dampingFactor={0.08} /></Canvas>
+  return <Canvas shadows camera={{ position: [0, 0, zoomLevel], fov: 45 }} onPointerMissed={() => setDrawing(false)}><color attach="background" args={['#0eb0ab']} /><ambientLight intensity={1.5} /><directionalLight castShadow position={[4, 6, 5]} intensity={2} /><Environment preset="studio" /><CameraController zoomLevel={zoomLevel} controlsRef={controlsRef} /><Suspense fallback={null}><Center disableY={false} disableX={false} disableZ={false}><ShirtMesh color={color} drawing={drawing} onDrawingChange={setDrawing} groupRef={groupRef} onPointerPosition={onPointerPosition} isPlacingStamp={isPlacingStamp} stampMessage={stampMessage} stampColor={stampColor} onStampPlaced={onStampPlaced} /></Center></Suspense><OrbitControls ref={controlsRef} makeDefault enabled={!drawing} enablePan={false} minDistance={1.5} maxDistance={8} enableDamping dampingFactor={0.08} /></Canvas>
 }
 
 function Marker({ item, active, onClick }: { item: typeof COLORS[number]; active: boolean; onClick: () => void }) { return <button type="button" aria-label={`Use ${item.name} marker`} aria-pressed={active} onClick={onClick} className={`group relative flex h-10 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${active ? 'bg-white/20 ring-1 ring-white ring-offset-2 ring-offset-[#087f7b]' : 'hover:bg-white/10'}`}><span className={`relative h-9 w-2.5 rounded-b-full rounded-t-sm ${item.ink} shadow-[2px_4px_0_rgba(0,0,0,.18)]`}><span className="absolute -top-1 left-0 h-2 w-3 rounded-t-sm bg-white/50" /><span className="absolute -bottom-2 left-[3px] h-2 w-1.5 border-x-[3px] border-t-4 border-transparent border-t-current" /></span><span className="sr-only">{item.name}</span></button> }
 
 export function SignoutStudio() {
   const [mounted, setMounted] = useState(false)
-  const [active, setActive] = useState(COLORS[0]); const [drawing, setDrawing] = useState(false); const [zoomLevel, setZoomLevel] = useState(4); const [pointer, setPointer] = useState({ x: 0, y: 0 }); const [markerTrayOpen, setMarkerTrayOpen] = useState(false); const groupRef = useRef<THREE.Group>(null)
+  const [active, setActive] = useState(COLORS[0]); const [drawing, setDrawing] = useState(false); const [zoomLevel, setZoomLevel] = useState(4); const [modalOpen, setModalOpen] = useState(false); const [isPlacingStamp, setIsPlacingStamp] = useState(false); const [stampMessage, setStampMessage] = useState(''); const [stampColor, setStampColor] = useState(COLORS[0].value); const [pointer, setPointer] = useState({ x: 0, y: 0 }); const [markerTrayOpen, setMarkerTrayOpen] = useState(false); const groupRef = useRef<THREE.Group>(null)
   useEffect(() => { setMounted(true) }, [])
   const rotate = (axis: 'x' | 'y', amount: number) => { if (groupRef.current) groupRef.current.rotation[axis] += amount }
-  const chooseMarker = (item: typeof COLORS[number]) => { setActive(item); setMarkerTrayOpen(false) }
+  const chooseMarker = (item: typeof COLORS[number]) => { setActive(item); setStampColor(item.value); setMarkerTrayOpen(false) }
+  const closeModal = () => { setModalOpen(false); setStampMessage('') }
+  const handleStripePayment = () => { /* Stripe integration will be wired here later. */ }
+  const handleSign = () => { if (!stampMessage.trim()) return; closeModal(); setIsPlacingStamp(true) }
   if (!mounted || typeof window === 'undefined') return <main className="relative h-dvh w-full overflow-hidden bg-[#0eb0ab]" aria-label="Loading shirt studio"><div className="absolute inset-0 grid place-items-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" role="status" aria-label="Loading 3D shirt" /></div></main>
-  return <main className="relative h-dvh w-full overflow-hidden bg-[#0eb0ab]"><div className="absolute inset-0 cursor-none" onPointerMove={(e) => setPointer({ x: e.clientX, y: e.clientY })}><Scene color={active.value} drawing={drawing} setDrawing={setDrawing} zoomLevel={zoomLevel} groupRef={groupRef} onPointerPosition={(x, y) => setPointer({ x, y })} /></div><div className={`pointer-events-none fixed z-30 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 max-md:-translate-y-7 border-white shadow-lg max-md:h-3 max-md:w-3 ${drawing ? 'opacity-100' : 'opacity-0 md:opacity-100'}`} style={{ left: pointer.x, top: pointer.y, backgroundColor: active.value }} aria-hidden="true" /><aside className="absolute right-3 top-1/2 z-10 flex w-12 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-white/30 bg-[#087f7b]/70 p-1 shadow-2xl backdrop-blur-xl"><div className={`${markerTrayOpen ? 'flex' : 'hidden'} absolute right-0 bottom-full mb-2 w-12 flex-col items-center justify-center gap-3 rounded-xl border border-white/25 bg-[#087f7b]/95 p-1 shadow-xl backdrop-blur-xl md:hidden`}>{COLORS.map((item) => <Marker key={item.name} item={item} active={active.name === item.name} onClick={() => chooseMarker(item)} />)}</div><div className="flex items-center gap-0.5 md:flex-col"><div className="flex items-center md:hidden"><Marker item={active} active onClick={() => setMarkerTrayOpen((open) => !open)} /><button type="button" aria-label="Toggle marker colors" aria-expanded={markerTrayOpen} onClick={() => setMarkerTrayOpen((open) => !open)} className="px-0.5 text-[10px] leading-none text-white">⌄</button></div><div className="hidden items-center md:flex md:flex-col md:gap-3">{COLORS.map((item) => <Marker key={item.name} item={item} active={active.name === item.name} onClick={() => chooseMarker(item)} />)}</div></div><div className="h-px w-8 bg-white/30" /><div className="flex flex-col gap-1"><button type="button" aria-label="Rotate left" onClick={() => rotate('y', -0.22)} className="studio-control"><ArrowLeft size={15} /></button><button type="button" aria-label="Rotate right" onClick={() => rotate('y', 0.22)} className="studio-control"><ArrowRight size={15} /></button><button type="button" aria-label="Rotate up" onClick={() => rotate('x', -0.16)} className="studio-control"><ArrowUp size={15} /></button><button type="button" aria-label="Rotate down" onClick={() => rotate('x', 0.16)} className="studio-control"><ArrowDown size={15} /></button><button type="button" aria-label="Reset rotation" onClick={() => groupRef.current?.rotation.set(0.02, 0, 0)} className="studio-control"><RotateCcw size={14} /></button></div><div className="h-px w-8 bg-white/30" /><div className="flex flex-col gap-1"><button type="button" aria-label="Zoom out" onClick={() => setZoomLevel((v) => Math.min(8, v + 0.5))} className="studio-control text-lg">−</button><button type="button" aria-label="Zoom in" onClick={() => setZoomLevel((v) => Math.max(1.5, v - 0.5))} className="studio-control text-lg">+</button></div></aside></main> }
+  return <main className="relative h-dvh w-full overflow-hidden bg-[#0eb0ab]"><div className="absolute inset-0"><Scene color={active.value} drawing={drawing} setDrawing={setDrawing} zoomLevel={zoomLevel} groupRef={groupRef} onPointerPosition={() => {}} isPlacingStamp={isPlacingStamp} stampMessage={stampMessage} stampColor={stampColor} onStampPlaced={() => setIsPlacingStamp(false)} /></div>{isPlacingStamp && <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 -translate-x-1/2 animate-pulse whitespace-nowrap rounded-full border border-white/30 bg-[#087f7b]/90 px-4 py-2 text-xs font-medium text-white shadow-xl backdrop-blur-xl">Tap anywhere on the white shirt to place your signature!</div>}{modalOpen && <div className="absolute inset-0 z-40 grid place-items-center bg-black/20 p-5 backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-labelledby="signature-title" className="w-full max-w-md rounded-3xl border border-white/30 bg-[#087f7b]/95 p-5 text-white shadow-2xl"><div className="mb-4 flex items-start justify-between"><div><p className="text-xs uppercase tracking-[0.24em] text-white/60">Leave your mark</p><h2 id="signature-title" className="mt-1 text-xl font-semibold">Sign the shirt</h2></div><button type="button" aria-label="Close signature modal" onClick={closeModal} className="text-2xl text-white/70">×</button></div><textarea maxLength={250} value={stampMessage} onChange={(e) => setStampMessage(e.target.value)} placeholder="Leave a message for me..." className="min-h-32 w-full resize-none rounded-2xl border border-white/20 bg-white/10 p-3 text-sm text-white outline-none placeholder:text-white/50 focus:border-white/60" /><p className="mt-2 text-right text-xs text-white/60">{stampMessage.length} / 250</p><div className="mt-4 grid grid-cols-4 gap-2">{COLORS.map((item) => <button key={item.name} type="button" onClick={() => chooseMarker(item)} className={`rounded-xl border p-2 text-xs ${stampColor === item.value ? 'border-white bg-white/20' : 'border-white/20 bg-white/5'}`}><span className={`mx-auto mb-1 block h-7 w-2.5 rounded-full ${item.ink}`} />{item.name}</button>)}</div><div className="mt-5 flex gap-2"><button type="button" onClick={handleSign} disabled={!stampMessage.trim()} className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#087f7b] disabled:opacity-40">Sign Shirt</button><button type="button" onClick={closeModal} className="rounded-xl border border-white/30 px-4 py-3 text-sm">Cancel</button></div></section></div>}<aside className="absolute right-3 top-1/2 z-10 flex w-12 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-white/30 bg-[#087f7b]/70 p-1 shadow-2xl backdrop-blur-xl"><div className={`${markerTrayOpen ? 'flex' : 'hidden'} absolute right-0 bottom-full mb-2 w-12 flex-col items-center justify-center gap-3 rounded-xl border border-white/25 bg-[#087f7b]/95 p-1 shadow-xl backdrop-blur-xl md:hidden`}>{COLORS.map((item) => <Marker key={item.name} item={item} active={active.name === item.name} onClick={() => chooseMarker(item)} />)}</div><button type="button" aria-label="Open signature modal" onClick={() => setModalOpen(true)} className="studio-control"><span className="-rotate-45 text-xl">✎</span></button><div className="h-px w-8 bg-white/30" /><div className="flex flex-col gap-1"><button type="button" aria-label="Rotate left" onClick={() => rotate('y', -0.22)} className="studio-control"><ArrowLeft size={15} /></button><button type="button" aria-label="Rotate right" onClick={() => rotate('y', 0.22)} className="studio-control"><ArrowRight size={15} /></button><button type="button" aria-label="Rotate up" onClick={() => rotate('x', -0.16)} className="studio-control"><ArrowUp size={15} /></button><button type="button" aria-label="Rotate down" onClick={() => rotate('x', 0.16)} className="studio-control"><ArrowDown size={15} /></button><button type="button" aria-label="Reset rotation" onClick={() => groupRef.current?.rotation.set(0.02, 0, 0)} className="studio-control"><RotateCcw size={14} /></button></div><div className="h-px w-8 bg-white/30" /><div className="flex flex-col gap-1"><button type="button" aria-label="Zoom out" onClick={() => setZoomLevel((v) => Math.min(8, v + 0.5))} className="studio-control text-lg">−</button><button type="button" aria-label="Zoom in" onClick={() => setZoomLevel((v) => Math.max(1.5, v - 0.5))} className="studio-control text-lg">+</button></div></aside><div className="absolute bottom-3 left-3 z-20 flex flex-col gap-1 rounded-xl border border-white/25 bg-[#087f7b]/70 p-1 backdrop-blur-xl sm:flex-row"><button type="button" onClick={() => {}} className="rounded-lg px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15">About Me</button><button type="button" onClick={handleStripePayment} className="rounded-lg px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15">Buy Me Coffee</button></div></main> }
 export default SignoutStudio
