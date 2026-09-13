@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Center, Environment, Html, OrbitControls, useGLTF } from '@react-three/drei'
+import { Center, Decal, Environment, OrbitControls, useGLTF, useTexture } from '@react-three/drei'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, RotateCcw } from 'lucide-react'
@@ -14,17 +14,37 @@ const COLORS = [
   { name: 'Blue', value: '#2c62a8', ink: 'bg-[#2c62a8]' },
 ]
 
-type Stamp = { id: number; text: string; color: string; position: [number, number, number] }
+type Stamp = {
+  id: number
+  textImage: string
+  position: [number, number, number]
+  rotation: [number, number, number]
+  scale: [number, number, number]
+}
 
-function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps = [], onStampCreate }: { groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps?: Stamp[]; onStampCreate: (point: THREE.Vector3) => void }) {
+function StampDecal({ stamp }: { stamp: Stamp }) {
+  const texture = useTexture(stamp.textImage)
+  return <Decal position={stamp.position} rotation={stamp.rotation} scale={stamp.scale}><meshStandardMaterial map={texture} transparent polygonOffset polygonOffsetFactor={-1} depthTest /></Decal>
+}
+
+function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps = [], onStampCreate }: { groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps?: Stamp[]; onStampCreate: (point: THREE.Vector3, normal: THREE.Vector3) => void }) {
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
   useEffect(() => { shirt.traverse((object) => { if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true } }) }, [shirt])
-  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={(e: any) => { e.stopPropagation(); if (isPlacingStamp && stampMessage.trim()) { onStampCreate(e.point); onStampPlaced() } }} />{stamps.map((stamp) => <Html key={stamp.id} position={stamp.position} transform occlude distanceFactor={1.5} center pointerEvents="none"><span className="whitespace-nowrap select-none font-serif text-base font-bold italic" style={{ color: stamp.color }}>{stamp.text}</span></Html>)}</group>
+  const handlePointerDown = (e: any) => {
+    e.stopPropagation()
+    if (!isPlacingStamp || !stampMessage.trim() || !groupRef.current || !e.normal) return
+    const localPoint = groupRef.current.worldToLocal(e.point.clone())
+    const localNormal = e.normal.clone().transformDirection(groupRef.current.matrixWorld).normalize()
+    const rotation = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), localNormal))
+    onStampCreate(localPoint, localNormal)
+    onStampPlaced()
+  }
+  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={handlePointerDown}>{stamps.map((stamp) => <StampDecal key={stamp.id} stamp={{ ...stamp, rotation: stamp.rotation }} />)}</primitive></group>
 }
 function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) { const target = useMemo(() => new THREE.Vector3(), []); useFrame((state) => { target.set(0, 0, zoomLevel); state.camera.position.lerp(target, 0.1); state.camera.updateProjectionMatrix(); controlsRef.current?.update() }); return null }
 
-function Scene({ zoomLevel, groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps, onStampCreate }: { zoomLevel: number; groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps: Stamp[]; onStampCreate: (point: THREE.Vector3) => void }) {
+function Scene({ zoomLevel, groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps, onStampCreate }: { zoomLevel: number; groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps: Stamp[]; onStampCreate: (point: THREE.Vector3, normal: THREE.Vector3) => void }) {
   const controlsRef = useRef<any>(null)
   return <Canvas shadows camera={{ position: [0, 0, zoomLevel], fov: 45 }}><color attach="background" args={['#0eb0ab']} /><ambientLight intensity={1.5} /><directionalLight castShadow position={[4, 6, 5]} intensity={2} /><Environment preset="studio" /><CameraController zoomLevel={zoomLevel} controlsRef={controlsRef} /><Suspense fallback={null}><Center disableY={false} disableX={false} disableZ={false}><ShirtMesh groupRef={groupRef} isPlacingStamp={isPlacingStamp} stampMessage={stampMessage} stampColor={stampColor} onStampPlaced={onStampPlaced} stamps={stamps} onStampCreate={onStampCreate} /></Center></Suspense><OrbitControls ref={controlsRef} makeDefault enabled={!isPlacingStamp} enablePan={false} minDistance={1.5} maxDistance={8} enableDamping dampingFactor={0.08} /></Canvas>
 }
@@ -40,7 +60,21 @@ export function SignoutStudio() {
   const closeModal = () => { setModalOpen(false); setStampMessage('') }
   const handleStripePayment = () => { /* Stripe integration will be wired here later. */ }
   const handleStampPlaced = () => { setIsPlacingStamp(false); setStampMessage('') }
-  const handleStampCreate = (point: THREE.Vector3) => { setStamps((current) => [...current, { id: Date.now(), text: stampMessage.trim(), color: stampColor, position: [point.x, point.y, point.z] }]) }
+  const handleStampCreate = (point: THREE.Vector3, normal: THREE.Vector3) => {
+    const rotation = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal))
+    const textCanvas = document.createElement('canvas')
+    textCanvas.width = 256
+    textCanvas.height = 256
+    const context = textCanvas.getContext('2d')
+    if (!context) return
+    context.clearRect(0, 0, 256, 256)
+    context.fillStyle = stampColor
+    context.font = 'bold 28px cursive'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.fillText(stampMessage.trim(), 128, 128, 240)
+    setStamps((current) => [...current, { id: Date.now(), textImage: textCanvas.toDataURL('image/png'), position: [point.x, point.y, point.z], rotation: [rotation.x, rotation.y, rotation.z], scale: [0.4, 0.4, 0.4] }])
+  }
   const handleSign = () => { if (!stampMessage.trim()) return; setModalOpen(false); setIsPlacingStamp(true) }
   return <main className="relative h-dvh w-full overflow-hidden bg-[#0eb0ab]"><div className="absolute inset-0">{isMounted ? (<Scene zoomLevel={zoomLevel} groupRef={groupRef} isPlacingStamp={isPlacingStamp} stampMessage={stampMessage} stampColor={stampColor} onStampPlaced={handleStampPlaced} stamps={stamps} onStampCreate={handleStampCreate} />) : (<div className="fixed inset-0 bg-[#0eb0ab]" />)}</div>{isPlacingStamp && <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 -translate-x-1/2 animate-pulse whitespace-nowrap rounded-full border border-white/30 bg-[#087f7b]/90 px-4 py-2 text-xs font-medium text-white shadow-xl backdrop-blur-xl">Tap anywhere on the white shirt to place your signature!</div>}{modalOpen && <div className="absolute inset-0 z-40 grid place-items-center bg-black/20 p-5 backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-labelledby="signature-title" className="w-full max-w-md rounded-3xl border border-white/30 bg-[#087f7b]/95 p-5 text-white shadow-2xl"><div className="mb-4 flex items-start justify-between"><div><p className="text-xs uppercase tracking-[0.24em] text-white/60">Leave your mark</p><h2 id="signature-title" className="mt-1 text-xl font-semibold">Sign the shirt</h2></div><button type="button" aria-label="Close signature modal" onClick={closeModal} className="text-2xl text-white/70">×</button></div><textarea maxLength={250} value={stampMessage} onChange={(e) => setStampMessage(e.target.value)} placeholder="Leave a message for me..." className="min-h-32 w-full resize-none rounded-2xl border border-white/20 bg-white/10 p-3 text-sm text-white outline-none placeholder:text-white/50 focus:border-white/60" /><p className="mt-2 text-right text-xs text-white/60">{stampMessage.length} / 250</p><div className="mt-4 grid grid-cols-4 gap-2">{COLORS.map((item) => <button key={item.name} type="button" onClick={() => chooseMarker(item)} className={`rounded-xl border p-2 text-xs ${stampColor === item.value ? 'border-white bg-white/20' : 'border-white/20 bg-white/5'}`}><span className={`mx-auto mb-1 block h-7 w-2.5 rounded-full ${item.ink}`} />{item.name}</button>)}</div><div className="mt-5 flex gap-2"><button type="button" onClick={handleSign} disabled={!stampMessage.trim()} className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#087f7b] disabled:opacity-40">Sign Shirt</button><button type="button" onClick={closeModal} className="rounded-xl border border-white/30 px-4 py-3 text-sm">Cancel</button></div></section></div>}<aside className="absolute right-3 top-1/2 z-10 flex w-12 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-white/30 bg-[#087f7b]/70 p-1 shadow-2xl backdrop-blur-xl"><div className={`${markerTrayOpen ? 'flex' : 'hidden'} absolute right-0 bottom-full mb-2 w-12 flex-col items-center justify-center gap-3 rounded-xl border border-white/25 bg-[#087f7b]/95 p-1 shadow-xl backdrop-blur-xl md:hidden`}>{COLORS.map((item) => <Marker key={item.name} item={item} active={active.name === item.name} onClick={() => chooseMarker(item)} />)}</div><button type="button" aria-label="Open signature modal" onClick={() => setModalOpen(true)} className="studio-control"><span className="-rotate-45 text-xl">✎</span></button><div className="h-px w-8 bg-white/30" /><div className="flex flex-col gap-1"><button type="button" aria-label="Rotate left" onClick={() => rotate('y', -0.22)} className="studio-control"><ArrowLeft size={15} /></button><button type="button" aria-label="Rotate right" onClick={() => rotate('y', 0.22)} className="studio-control"><ArrowRight size={15} /></button><button type="button" aria-label="Rotate up" onClick={() => rotate('x', -0.16)} className="studio-control"><ArrowUp size={15} /></button><button type="button" aria-label="Rotate down" onClick={() => rotate('x', 0.16)} className="studio-control"><ArrowDown size={15} /></button><button type="button" aria-label="Reset rotation" onClick={() => groupRef.current?.rotation.set(0.02, 0, 0)} className="studio-control"><RotateCcw size={14} /></button></div><div className="h-px w-8 bg-white/30" /><div className="flex flex-col gap-1"><button type="button" aria-label="Zoom out" onClick={() => setZoomLevel((v) => Math.min(8, v + 0.5))} className="studio-control text-lg">−</button><button type="button" aria-label="Zoom in" onClick={() => setZoomLevel((v) => Math.max(1.5, v - 0.5))} className="studio-control text-lg">+</button></div></aside><div className="absolute bottom-3 left-3 z-20 flex flex-col gap-1 rounded-xl border border-white/25 bg-[#087f7b]/70 p-1 backdrop-blur-xl sm:flex-row"><button type="button" onClick={() => {}} className="rounded-lg px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15">About Me</button><button type="button" onClick={handleStripePayment} className="rounded-lg px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15">Buy Me Coffee</button></div></main> }
 export default SignoutStudio
