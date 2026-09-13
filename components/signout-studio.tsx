@@ -22,14 +22,21 @@ type Stamp = {
   scale: [number, number, number]
 }
 
-function StampDecal({ stamp }: { stamp: Stamp }) {
+function StampDecal({ stamp, mesh }: { stamp: Stamp; mesh: THREE.Mesh }) {
   const texture = useTexture(stamp.textImage)
-  return <Decal position={stamp.position} rotation={stamp.rotation} scale={stamp.scale}><meshStandardMaterial map={texture} transparent polygonOffset polygonOffsetFactor={-1} depthTest /></Decal>
+  return <Decal mesh={mesh} position={stamp.position} rotation={stamp.rotation} scale={stamp.scale}><meshStandardMaterial map={texture} transparent polygonOffset polygonOffsetFactor={-1} depthTest /></Decal>
 }
 
 function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps = [], onStampCreate }: { groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps?: Stamp[]; onStampCreate: (point: THREE.Vector3, normal: THREE.Vector3) => void }) {
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
+  const targetMesh = useMemo(() => {
+    let firstMesh: THREE.Mesh | null = null
+    shirt.traverse((object) => {
+      if (!firstMesh && object instanceof THREE.Mesh) firstMesh = object
+    })
+    return firstMesh
+  }, [shirt])
   useEffect(() => { shirt.traverse((object) => { if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true } }) }, [shirt])
   const handlePointerDown = (e: any) => {
     e.stopPropagation()
@@ -40,7 +47,7 @@ function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStamp
     onStampCreate(localPoint, localNormal)
     onStampPlaced()
   }
-  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={handlePointerDown}>{stamps.map((stamp) => <StampDecal key={stamp.id} stamp={{ ...stamp, rotation: stamp.rotation }} />)}</primitive></group>
+  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={handlePointerDown} />{targetMesh && stamps.map((stamp) => <StampDecal key={stamp.id} stamp={stamp} mesh={targetMesh} />)}</group>
 }
 function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) { const target = useMemo(() => new THREE.Vector3(), []); useFrame((state) => { target.set(0, 0, zoomLevel); state.camera.position.lerp(target, 0.1); state.camera.updateProjectionMatrix(); controlsRef.current?.update() }); return null }
 
