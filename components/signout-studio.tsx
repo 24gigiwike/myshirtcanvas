@@ -20,7 +20,7 @@ function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStamp
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
   useEffect(() => { shirt.traverse((object) => { if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true } }) }, [shirt])
-  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={(e: any) => { e.stopPropagation(); if (isPlacingStamp && stampMessage.trim()) { onStampCreate(e.point); onStampPlaced() } }} />{stamps.map((stamp) => <Html key={stamp.id} position={stamp.position} distanceFactor={3} center pointerEvents="none"><span className="select-none whitespace-nowrap font-serif text-base font-bold italic" style={{ color: stamp.color }}>{stamp.text}</span></Html>)}</group>
+  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={(e: any) => { e.stopPropagation(); if (isPlacingStamp && stampMessage.trim()) { onStampCreate(e.point); onStampPlaced() } }} />{stamps.map((stamp) => <Html key={stamp.id} position={stamp.position} transform occlude distanceFactor={1.5} center pointerEvents="none"><span className="whitespace-nowrap select-none font-serif text-base font-bold italic" style={{ color: stamp.color }}>{stamp.text}</span></Html>)}</group>
 }
 function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) { const target = useMemo(() => new THREE.Vector3(), []); useFrame((state) => { target.set(0, 0, zoomLevel); state.camera.position.lerp(target, 0.1); state.camera.updateProjectionMatrix(); controlsRef.current?.update() }); return null }
 
