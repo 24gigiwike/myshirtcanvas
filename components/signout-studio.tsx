@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Center, Decal, Environment, OrbitControls, useGLTF, useTexture } from '@react-three/drei'
+import { Center, Environment, OrbitControls, useGLTF, useTexture } from '@react-three/drei'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, RotateCcw } from 'lucide-react'
@@ -22,42 +22,34 @@ type Stamp = {
   scale: [number, number, number]
 }
 
-function StampDecal({ stamp, mesh }: { stamp: Stamp; mesh: THREE.Mesh }) {
+function StampDecal({ stamp }: { stamp: Stamp }) {
   const texture = useTexture(stamp.textImage)
   texture.colorSpace = THREE.SRGBColorSpace
   texture.anisotropy = 8
   texture.needsUpdate = true
 
   return (
-    <group position={stamp.position} rotation={stamp.rotation}>
-      <Decal mesh={mesh} position={[0, 0, 0]} rotation={[0, 0, 0]} scale={[1.2, 1.2, 0.005]}>
-        <meshStandardMaterial
-          map={texture}
-          polygonOffset={true}
-          polygonOffsetFactor={-10}
-          polygonOffsetUnits={-10}
-          depthWrite={false}
-          transparent={true}
-          alphaTest={0.01}
-          side={THREE.DoubleSide}
-          roughness={1}
-          metalness={0}
-        />
-      </Decal>
-    </group>
+    <mesh position={stamp.position} rotation={stamp.rotation} scale={[1.2, 1.2, 0.01]} renderOrder={2}>
+      <planeGeometry args={[1, 1]} />
+      <meshStandardMaterial
+        map={texture}
+        polygonOffset
+        polygonOffsetFactor={-10}
+        polygonOffsetUnits={-10}
+        depthWrite={false}
+        transparent
+        alphaTest={0.01}
+        side={THREE.DoubleSide}
+        roughness={1}
+        metalness={0}
+      />
+    </mesh>
   )
 }
 
 function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps = [], onStampCreate }: { groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps?: Stamp[]; onStampCreate: (point: THREE.Vector3, rotation: THREE.Euler) => void }) {
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
-  const targetMesh = useMemo(() => {
-    let firstMesh: THREE.Mesh | null = null
-    shirt.traverse((object) => {
-      if (!firstMesh && object instanceof THREE.Mesh) firstMesh = object
-    })
-    return firstMesh
-  }, [shirt])
   useEffect(() => { shirt.traverse((object) => { if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true } }) }, [shirt])
   const handlePointerDown = (e: any) => {
     e.stopPropagation()
@@ -68,7 +60,7 @@ function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStamp
     onStampCreate(localPoint, rotation)
     onStampPlaced()
   }
-  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={handlePointerDown} />{targetMesh && stamps.map((stamp) => <StampDecal key={stamp.id} stamp={stamp} mesh={targetMesh} />)}</group>
+  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={handlePointerDown} />{stamps.map((stamp) => <StampDecal key={stamp.id} stamp={stamp} />)}</group>
 }
 function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) { const target = useMemo(() => new THREE.Vector3(), []); useFrame((state) => { target.set(0, 0, zoomLevel); state.camera.position.lerp(target, 0.1); state.camera.updateProjectionMatrix(); controlsRef.current?.update() }); return null }
 
