@@ -120,7 +120,6 @@ export function SignoutStudio() {
       for (let index = 0; index < words.length; index += maxWordsPerLine) {
         lines.push(words.slice(index, index + maxWordsPerLine).join(' '))
       }
-      if (currentLine) lines.push(currentLine)
     })
 
     const startY = 512 - ((lines.length - 1) * lineHeight) / 2
