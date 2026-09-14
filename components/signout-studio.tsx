@@ -87,7 +87,7 @@ export function SignoutStudio() {
   const closeModal = () => { setModalOpen(false); setStampMessage('') }
   const handleStripePayment = () => { /* Stripe integration will be wired here later. */ }
   const handleStampPlaced = () => { setIsPlacingStamp(false); setStampMessage('') }
-  const handleTextReset = () => { setStampMessage(''); setIsPlacingStamp(false); setModalOpen(false) }
+  const handleTextReset = () => { setStampMessage('') }
   const handleStampCreate = (point: THREE.Vector3, rotation: THREE.Euler) => {
     const textCanvas = document.createElement('canvas')
     textCanvas.width = 1024
