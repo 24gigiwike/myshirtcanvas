@@ -96,12 +96,12 @@ export function SignoutStudio() {
     if (!context) return
     context.clearRect(0, 0, 1024, 1024)
     context.fillStyle = stampColor
-    context.font = "italic bold 100px 'Nunito', 'Rubik', sans-serif"
+    context.font = "italic bold 300px 'Nunito', 'Rubik', sans-serif"
     context.textAlign = 'center'
     context.textBaseline = 'middle'
 
     const maxWordsPerLine = 5
-    const lineHeight = 90
+    const lineHeight = 130
     const lines: string[] = []
     stampMessage.trim().split(/\r?\n/).forEach((paragraph) => {
       const words = paragraph.trim().split(/\s+/).filter(Boolean)
