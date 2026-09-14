@@ -31,17 +31,17 @@ function StampDecal({ stamp }: { stamp: Stamp }) {
   return (
     <mesh position={stamp.position} rotation={stamp.rotation} scale={[1.5, 1.5, 0.005]} renderOrder={2}>
       <planeGeometry args={[1, 1]} />
-      <meshStandardMaterial
+      <meshBasicMaterial
         map={texture}
-        polygonOffset
-        polygonOffsetFactor={-10}
-        polygonOffsetUnits={-10}
+        transparent={true}
+        opacity={1}
         depthWrite={false}
-        transparent
+        polygonOffset={true}
+        polygonOffsetFactor={-15}
+        polygonOffsetUnits={-15}
         alphaTest={0.01}
         side={THREE.DoubleSide}
-        roughness={1}
-        metalness={0}
+        toneMapped={false}
       />
     </mesh>
   )
