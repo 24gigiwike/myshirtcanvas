@@ -29,17 +29,17 @@ function StampDecal({ stamp }: { stamp: Stamp }) {
   texture.needsUpdate = true
 
   return (
-    <mesh position={stamp.position} rotation={stamp.rotation} scale={[1.2, 1.2, 0.02]} renderOrder={2}>
+    <mesh position={stamp.position} rotation={stamp.rotation} scale={[3.2, 3.2, 0.02]} renderOrder={2}>
       <planeGeometry args={[1, 1]} />
       <meshBasicMaterial
         map={texture}
-        transparent
-        alphaTest={0.01}
+        transparent={true}
+        opacity={1}
         depthWrite={false}
-        depthTest
-        polygonOffset
-        polygonOffsetFactor={-10}
-        polygonOffsetUnits={-10}
+        polygonOffset={true}
+        polygonOffsetFactor={-15}
+        polygonOffsetUnits={-15}
+        alphaTest={0.01}
         side={THREE.DoubleSide}
         toneMapped={false}
       />
@@ -87,7 +87,7 @@ export function SignoutStudio() {
   const closeModal = () => { setModalOpen(false); setStampMessage('') }
   const handleStripePayment = () => { /* Stripe integration will be wired here later. */ }
   const handleStampPlaced = () => { setIsPlacingStamp(false); setStampMessage('') }
-  const handleTextReset = () => { setStampMessage(''); setIsPlacingStamp(false); setModalOpen(false) }
+  const handleTextReset = () => { setStampMessage('') }
   const handleStampCreate = (point: THREE.Vector3, rotation: THREE.Euler) => {
     const textCanvas = document.createElement('canvas')
     textCanvas.width = 1024
@@ -96,12 +96,12 @@ export function SignoutStudio() {
     if (!context) return
     context.clearRect(0, 0, 1024, 1024)
     context.fillStyle = stampColor
-    context.font = "italic bold 70px 'Nunito', 'Rubik', sans-serif"
+    context.font = "italic bold 100px 'Nunito', 'Rubik', sans-serif"
     context.textAlign = 'center'
     context.textBaseline = 'middle'
 
-    const maxWidth = 900
-    const lineHeight = 90
+    const maxWordsPerLine = 5
+    const lineHeight = 130
     const lines: string[] = []
     stampMessage.trim().split(/\r?\n/).forEach((paragraph) => {
       const words = paragraph.trim().split(/\s+/).filter(Boolean)
@@ -109,17 +109,9 @@ export function SignoutStudio() {
         lines.push('')
         return
       }
-      let currentLine = ''
-      words.forEach((word) => {
-        const candidate = currentLine ? `${currentLine} ${word}` : word
-        if (context.measureText(candidate).width <= maxWidth || !currentLine) {
-          currentLine = candidate
-        } else {
-          lines.push(currentLine)
-          currentLine = word
-        }
-      })
-      if (currentLine) lines.push(currentLine)
+      for (let index = 0; index < words.length; index += maxWordsPerLine) {
+        lines.push(words.slice(index, index + maxWordsPerLine).join(' '))
+      }
     })
 
     const startY = 512 - ((lines.length - 1) * lineHeight) / 2
