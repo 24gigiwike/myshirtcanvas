@@ -29,7 +29,7 @@ function StampDecal({ stamp }: { stamp: Stamp }) {
   texture.needsUpdate = true
 
   return (
-    <mesh position={stamp.position} rotation={stamp.rotation} scale={[1.2, 1.2, 0.01]} renderOrder={2}>
+    <mesh position={stamp.position} rotation={stamp.rotation} scale={[1.5, 1.5, 0.005]} renderOrder={2}>
       <planeGeometry args={[1, 1]} />
       <meshStandardMaterial
         map={texture}
@@ -96,7 +96,7 @@ export function SignoutStudio() {
     if (!context) return
     context.clearRect(0, 0, 1024, 1024)
     context.fillStyle = stampColor
-    context.font = "italic bold 70px 'Nunito', 'Rubik', sans-serif"
+    context.font = "italic bold 100px 'Nunito', 'Rubik', sans-serif"
     context.textAlign = 'center'
     context.textBaseline = 'middle'
 
