@@ -29,22 +29,16 @@ function StampDecal({ stamp }: { stamp: Stamp }) {
   texture.needsUpdate = true
 
   return (
-    <mesh
-      position={stamp.position}
-      rotation={stamp.rotation}
-      scale={stamp.scale}
-      renderOrder={2}
-    >
+    <mesh position={stamp.position} rotation={stamp.rotation} scale={[3.2, 3.2, 0.02]} renderOrder={2}>
       <planeGeometry args={[1, 1]} />
       <meshBasicMaterial
         map={texture}
         transparent={true}
         opacity={1}
         depthWrite={false}
-        depthTest={false}
         polygonOffset={true}
-        polygonOffsetFactor={-1}
-        polygonOffsetUnits={-1}
+        polygonOffsetFactor={-15}
+        polygonOffsetUnits={-15}
         alphaTest={0.01}
         side={THREE.DoubleSide}
         toneMapped={false}
@@ -62,7 +56,7 @@ function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStamp
     if (!isPlacingStamp || !stampMessage.trim() || !groupRef.current || !e.normal) return
     const localPoint = groupRef.current.worldToLocal(e.point.clone())
     const rotation = e.normal ? new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), e.normal)) : new THREE.Euler(0, 0, 0)
-    localPoint.addScaledVector(e.normal ?? new THREE.Vector3(0, 0, 1), 0.015)
+    localPoint.addScaledVector(e.normal ?? new THREE.Vector3(0, 0, 1), 0.006)
     onStampCreate(localPoint, rotation)
     onStampPlaced()
   }
