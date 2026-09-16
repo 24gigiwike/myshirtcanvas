@@ -29,16 +29,22 @@ function StampDecal({ stamp }: { stamp: Stamp }) {
   texture.needsUpdate = true
 
   return (
-    <mesh position={stamp.position} rotation={stamp.rotation} scale={[3.2, 3.2, 0.02]} renderOrder={2}>
+    <mesh
+      position={stamp.position}
+      rotation={stamp.rotation}
+      scale={stamp.scale}
+      renderOrder={2}
+    >
       <planeGeometry args={[1, 1]} />
       <meshBasicMaterial
         map={texture}
         transparent={true}
         opacity={1}
         depthWrite={false}
+        depthTest={false}
         polygonOffset={true}
-        polygonOffsetFactor={-15}
-        polygonOffsetUnits={-15}
+        polygonOffsetFactor={-1}
+        polygonOffsetUnits={-1}
         alphaTest={0.01}
         side={THREE.DoubleSide}
         toneMapped={false}
