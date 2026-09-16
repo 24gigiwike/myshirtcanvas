@@ -62,7 +62,7 @@ function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStamp
     if (!isPlacingStamp || !stampMessage.trim() || !groupRef.current || !e.normal) return
     const localPoint = groupRef.current.worldToLocal(e.point.clone())
     const rotation = e.normal ? new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), e.normal)) : new THREE.Euler(0, 0, 0)
-    localPoint.addScaledVector(e.normal ?? new THREE.Vector3(0, 0, 1), 0.006)
+    localPoint.addScaledVector(e.normal ?? new THREE.Vector3(0, 0, 1), 0.015)
     onStampCreate(localPoint, rotation)
     onStampPlaced()
   }
