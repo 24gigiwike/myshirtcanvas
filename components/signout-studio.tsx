@@ -36,10 +36,10 @@ function StampDecal({ stamp }: { stamp: Stamp }) {
         transparent={true}
         opacity={1}
         depthWrite={false}
-        depthTest={false}
+        depthTest={true}
         polygonOffset={true}
-        polygonOffsetFactor={-15}
-        polygonOffsetUnits={-15}
+        polygonOffsetFactor={-4}
+        polygonOffsetUnits={-4}
         alphaTest={0.01}
         side={THREE.DoubleSide}
         toneMapped={false}
@@ -51,7 +51,22 @@ function StampDecal({ stamp }: { stamp: Stamp }) {
 function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps = [], onStampCreate }: { groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps?: Stamp[]; onStampCreate: (point: THREE.Vector3, rotation: THREE.Euler) => void }) {
   const { scene } = useGLTF(SHIRT_MODEL_URL)
   const shirt = useMemo(() => scene.clone(true), [scene])
-  useEffect(() => { shirt.traverse((object) => { if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true } }) }, [shirt])
+  useEffect(() => {
+    shirt.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return
+      object.castShadow = true
+      object.receiveShadow = true
+      object.renderOrder = 1
+      const materials = Array.isArray(object.material) ? object.material : [object.material]
+      materials.forEach((material) => {
+        material.transparent = false
+        material.opacity = 1
+        material.depthWrite = true
+        material.depthTest = true
+        material.needsUpdate = true
+      })
+    })
+  }, [shirt])
   const handlePointerDown = (e: any) => {
     e.stopPropagation()
     if (!isPlacingStamp || !stampMessage.trim() || !groupRef.current || !e.normal) return
