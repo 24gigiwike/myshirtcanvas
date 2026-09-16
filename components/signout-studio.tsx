@@ -1,6 +1,6 @@
 'use client'
 
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { Center, Environment, OrbitControls, useGLTF, useTexture } from '@react-three/drei'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -29,13 +29,14 @@ function StampDecal({ stamp }: { stamp: Stamp }) {
   texture.needsUpdate = true
 
   return (
-    <mesh position={stamp.position} rotation={stamp.rotation} scale={[3.2, 3.2, 0.02]} renderOrder={2}>
+    <mesh position={stamp.position} rotation={stamp.rotation} scale={stamp.scale} renderOrder={2}>
       <planeGeometry args={[1, 1]} />
       <meshBasicMaterial
         map={texture}
         transparent={true}
         opacity={1}
         depthWrite={false}
+        depthTest={false}
         polygonOffset={true}
         polygonOffsetFactor={-15}
         polygonOffsetUnits={-15}
@@ -55,14 +56,26 @@ function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStamp
     e.stopPropagation()
     if (!isPlacingStamp || !stampMessage.trim() || !groupRef.current || !e.normal) return
     const localPoint = groupRef.current.worldToLocal(e.point.clone())
-    const rotation = e.normal ? new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), e.normal)) : new THREE.Euler(0, 0, 0)
-    localPoint.addScaledVector(e.normal ?? new THREE.Vector3(0, 0, 1), 0.006)
+    const worldNormal = e.normal.clone().transformDirection(e.object.matrixWorld).normalize()
+    const localNormal = worldNormal.clone().applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(groupRef.current.matrixWorld).invert()).normalize()
+    const rotation = new THREE.Euler().setFromQuaternion(
+      new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), localNormal)
+    )
+    localPoint.addScaledVector(localNormal, 0.01)
     onStampCreate(localPoint, rotation)
     onStampPlaced()
   }
   return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={handlePointerDown} />{stamps.map((stamp) => <StampDecal key={stamp.id} stamp={stamp} />)}</group>
 }
-function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) { const target = useMemo(() => new THREE.Vector3(), []); useFrame((state) => { target.set(0, 0, zoomLevel); state.camera.position.lerp(target, 0.1); state.camera.updateProjectionMatrix(); controlsRef.current?.update() }); return null }
+function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) {
+  const { camera } = useThree()
+  useEffect(() => {
+    camera.position.set(camera.position.x, camera.position.y, zoomLevel)
+    camera.updateProjectionMatrix()
+    controlsRef.current?.update()
+  }, [camera, controlsRef, zoomLevel])
+  return null
+}
 
 function Scene({ zoomLevel, groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps, onStampCreate }: { zoomLevel: number; groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps: Stamp[]; onStampCreate: (point: THREE.Vector3, rotation: THREE.Euler) => void }) {
   const controlsRef = useRef<any>(null)
