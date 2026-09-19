@@ -2,7 +2,7 @@
 
 import { Canvas, useThree } from '@react-three/fiber'
 import { Center, Environment, OrbitControls, useGLTF, useTexture } from '@react-three/drei'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, RotateCcw } from 'lucide-react'
 
@@ -49,30 +49,8 @@ function StampDecal({ stamp }: { stamp: Stamp }) {
 }
 
 function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps = [], onStampCreate }: { groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps?: Stamp[]; onStampCreate: (point: THREE.Vector3, rotation: THREE.Euler) => void }) {
-  const { scene } = useGLTF(SHIRT_MODEL_URL)
-  const shirt = useMemo(() => scene.clone(true), [scene])
-  useEffect(() => {
-    shirt.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return
-      object.castShadow = true
-      object.receiveShadow = true
-      object.renderOrder = 1
-      const materials = Array.isArray(object.material) ? object.material : [object.material]
-      materials.forEach((material) => {
-        material.map = null
-        material.alphaMap = null
-        material.transparent = false
-        material.opacity = 1
-        material.depthWrite = true
-        material.depthTest = true
-        material.alphaTest = 0
-        if (material.color) material.color.set('#ffffff')
-        material.roughness = 0.8
-        material.metalness = 0.1
-        material.needsUpdate = true
-      })
-    })
-  }, [shirt])
+  const { nodes } = useGLTF(SHIRT_MODEL_URL)
+  const shirtMeshNode = Object.values(nodes).find((node: any) => node.type === 'Mesh' || node.isMesh) as THREE.Mesh | undefined
   const handlePointerDown = (e: any) => {
     e.stopPropagation()
     if (!isPlacingStamp || !stampMessage.trim() || !groupRef.current || !e.normal) return
@@ -86,7 +64,9 @@ function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStamp
     onStampCreate(localPoint, rotation)
     onStampPlaced()
   }
-  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}><primitive object={shirt} onPointerDown={handlePointerDown} />{stamps.map((stamp) => <StampDecal key={stamp.id} stamp={stamp} />)}</group>
+  return <group ref={groupRef} rotation={[0.02, 0, 0]} scale={[0.42, 0.42, 0.42]}>{shirtMeshNode && <mesh geometry={shirtMeshNode.geometry} castShadow receiveShadow onPointerDown={handlePointerDown} renderOrder={1}>
+    <meshStandardMaterial color="#ffffff" transparent={false} opacity={1} depthWrite={true} depthTest={true} roughness={0.8} metalness={0.1} side={THREE.DoubleSide} />
+  </mesh>}{stamps.map((stamp) => <StampDecal key={stamp.id} stamp={stamp} />)}</group>
 }
 function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; controlsRef: React.RefObject<any> }) {
   const { camera } = useThree()
