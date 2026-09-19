@@ -63,6 +63,9 @@ function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStamp
         material.opacity = 1
         material.depthWrite = true
         material.depthTest = true
+        if ('color' in material && material.color instanceof THREE.Color) {
+          material.color.set('#ffffff')
+        }
         material.needsUpdate = true
       })
     })
