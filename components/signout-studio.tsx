@@ -59,13 +59,16 @@ function ShirtMesh({ groupRef, isPlacingStamp, stampMessage, stampColor, onStamp
       object.renderOrder = 1
       const materials = Array.isArray(object.material) ? object.material : [object.material]
       materials.forEach((material) => {
+        material.map = null
+        material.alphaMap = null
         material.transparent = false
         material.opacity = 1
         material.depthWrite = true
         material.depthTest = true
-        if ('color' in material && material.color instanceof THREE.Color) {
-          material.color.set('#ffffff')
-        }
+        material.alphaTest = 0
+        if (material.color) material.color.set('#ffffff')
+        material.roughness = 0.8
+        material.metalness = 0.1
         material.needsUpdate = true
       })
     })
