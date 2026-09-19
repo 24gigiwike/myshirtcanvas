@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get to Know Me - Engr. Great</title>
+    
+    <!-- Premium Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Poppins:wght@300;400;500;600;700&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #fdfbf7 0%, #faf8f3 100%);
+            overflow: hidden;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .carousel-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        .carousel-slide {
+            width: 100%;
+            height: 100%;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: row;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .carousel-slide::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255, 182, 193, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        /* Mobile: Invert layout - text on top, image on bottom */
+        @media (max-width: 768px) {
+            .carousel-slide {
+                flex-direction: column-reverse;
+            }
+        }
+        
+        .slide-image {
+            width: 50%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem;
+            position: relative;
+        }
+        
+        @media (max-width: 768px) {
+            .slide-image {
+                width: 100%;
+                height: 48%;
+                padding: 1.5rem;
+                order: 2;
+            }
+        }
+        
+        .image-frame {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .image-frame::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            background: transparent;
+            border: 1px solid rgba(26, 26, 26, 0.06);
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .image-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border-radius: 20px;
+            filter: brightness(0.98) contrast(1.02);
+            transition: transform 0.6s ease;
+        }
+        
+        .carousel-slide:hover .image-frame img {
+            transform: scale(1.02);
+        }
+        
+        .slide-content {
+            width: 50%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 5rem 4.5rem;
+            position: relative;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+        
+        .slide-content::-webkit-scrollbar {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .slide-content {
+                width: 100%;
+                height: 52%;
+                padding: 2.5rem 1.75rem;
+                justify-content: flex-start;
+                padding-top: 1.5rem;
+                order: 1;
+            }
+        }
+        
+        .content-inner {
+            max-width: 100%;
+        }
+        
+        /* Asymmetric Typography Variations */
+        .slide-content:nth-child(2) .slide-title {
+            font-size: 4.2rem;
+            font-weight: 900;
+            letter-spacing: -3px;
+        }
+        
+        .slide-content:nth-child(4) .slide-title {
+            font-size: 3.8rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+            font-style: italic;
+        }
+        
+        .slide-content:nth-child(6) .slide-title {
+            font-size: 3.2rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .slide-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.6rem;
+            font-weight: 700;
+            letter-spacing: -2.5px;
+            margin-bottom: 1.5rem;
+            color: #0a0a0a;
+            line-height: 1.15;
+            position: relative;
+        }
+        
+        @media (max-width: 768px) {
+            .slide-title {
+                font-size: 1.8rem;
+                margin-bottom: 0.8rem;
+                letter-spacing: -0.5px;
+            }
+            
+            .slide-content:nth-child(2) .slide-title {
+                font-size: 2.2rem;
+            }
+            
+            .slide-content:nth-child(4) .slide-title {
+                font-size: 2rem;
+            }
+            
+            .slide-content:nth-child(6) .slide-title {
+                font-size: 1.6rem;
+            }
+        }
+        
+        /* Decorative underlines for alternating slides */
+        .carousel-slide:nth-child(odd) .slide-title::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: #d4a574;
+            border-radius: 2px;
+        }
+        
+        .slide-text {
+            font-family: 'Lora', serif;
+            font-size: 1.05rem;
+            line-height: 1.85;
+            color: #2a2a2a;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+        }
+        
+        /* Text color variations for visual interest */
+        .carousel-slide:nth-child(3) .slide-text {
+            color: #1f1f1f;
+            font-size: 1.1rem;
+        }
+        
+        .carousel-slide:nth-child(5) .slide-text {
+            color: #444;
+            font-size: 0.98rem;
+            line-height: 1.9;
+        }
+        
+        @media (max-width: 768px) {
+            .slide-text {
+                font-size: 0.95rem;
+                line-height: 1.7;
+            }
+        }
+        
+        .nav-button {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(26, 26, 26, 0.12);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 20;
+            color: #1a1a1a;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        
+        .nav-button:hover {
+            background: rgba(255, 255, 255, 0.6);
+            border-color: rgba(26, 26, 26, 0.25);
+            transform: translateY(-50%) scale(1.15);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+        
+        .nav-prev {
+            left: 2.5rem;
+        }
+        
+        .nav-next {
+            right: 2.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .nav-button {
+                width: 48px;
+                height: 48px;
+                font-size: 1.1rem;
+            }
+            
+            .nav-prev {
+                left: 1rem;
+            }
+            
+            .nav-next {
+                right: 1rem;
+            }
+        }
+        
+        .progress-indicators {
+            position: fixed;
+            bottom: 2.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 20;
+        }
+        
+        .progress-dash {
+            width: 2rem;
+            height: 2.5px;
+            background-color: rgba(26, 26, 26, 0.15);
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+        }
+        
+        .progress-dash:hover {
+            background-color: rgba(26, 26, 26, 0.3);
+        }
+        
+        .progress-dash.active {
+            background: linear-gradient(90deg, #1a1a1a 0%, #3d3d3d 100%);
+            width: 3.5rem;
+            box-shadow: 0 4px 12px rgba(26, 26, 26, 0.15);
+        }
+        
+        @media (max-width: 768px) {
+            .progress-indicators {
+                bottom: 1.5rem;
+                gap: 0.7rem;
+            }
+            
+            .progress-dash {
+                width: 1.5rem;
+                height: 2px;
+            }
+            
+            .progress-dash.active {
+                width: 2.8rem;
+            }
+        }
+        
+        .floating-deck {
+            position: fixed;
+            bottom: 2.5rem;
+            left: 2.5rem;
+            right: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 15;
+            pointer-events: none;
+        }
+        
+        @media (max-width: 768px) {
+            .floating-deck {
+                bottom: 1.5rem;
+                left: 1rem;
+                right: 1rem;
+                gap: 0.5rem;
+            }
+        }
+        
+        .floating-link {
+            pointer-events: all;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            color: #1a1a1a;
+            transition: all 0.3s ease;
+            padding: 0.7rem 1.3rem;
+            border: 1.5px solid rgba(26, 26, 26, 0.15);
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .floating-link:hover {
+            background: rgba(255, 255, 255, 0.85);
+            border-color: rgba(26, 26, 26, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+        }
+        
+        @media (max-width: 768px) {
+            .floating-link {
+                font-size: 0.8rem;
+                padding: 0.6rem 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div style="width: 100%; height: 100vh; overflow: hidden; position: relative;">
+        
+        <!-- Carousel Container -->
+        <div class="carousel-container" id="carousel">
+            
+            <!-- Slide 1: Introduction -->
+            <div class="carousel-slide">
+                <div class="slide-image">
+                    <div class="image-frame">
+                        <img src="https://res.cloudinary.com/dtkluxukm/image/upload/v1789663440/front_i5fh0m.jpg" alt="Introduction">
+                    </div>
+                </div>
+                <div class="slide-content">
+                    <div class="content-inner">
+                        <h1 class="slide-title serif-display">Introduction</h1>
+                        <p class="slide-text">Hi I'm Great, and yes I have officially GRADUADA (siri said it's Spanish for graduated) and I am officially an Engineer (against my will) so, you MUST call me Engr. Great. my favorite food is beans and literally any other combination except corn and seafood. My favorite color is sparkle blue. I'm a pop and R&B music lover... Favorite artists are unlimited, but a few are Ain't Afraid, Zinnydmore, D'lait, Efue, Jazzworld (amapiano will not be the end of me IJN), Sia, Gaise Baba, AEO, BOYFROMEDEN, and plenty others. I am an award-winning Web Designer and developer, DevOps engineer, entrepreneur, builder and songwriter (just on random Thursdays). I am obsessed with anime and ice cream.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 2: 100 LVL -->
+            <div class="carousel-slide">
+                <div class="slide-image">
+                    <div class="image-frame">
+                        <img src="https://res.cloudinary.com/dtkluxukm/image/upload/v1789663438/100lvl_oelgon.jpg" alt="100 LVL">
+                    </div>
+                </div>
+                <div class="slide-content">
+                    <div class="content-inner">
+                        <h1 class="slide-title serif-display">100 LVL</h1>
+                        <p class="slide-text">I never wanted to come here in the first place. Was I forced? ehhnnn something like that. But, I didn't really have a choice cause I wasn't the one paying the school fees. So far university has been a blur. I was super stressed out, super out of touch with humanity (cause my school is in the bush), and most importantly, I was fainting emotionally and mentally almost every 2 hours. Nothing really memorable in 100lvl, cause. I was literally the most boring individual. Oh I met Davidson in 100lvl and yeah that part was cool.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 3: 200 LVL -->
+            <div class="carousel-slide">
+                <div class="slide-image">
+                    <div class="image-frame">
+                        <img src="https://res.cloudinary.com/dtkluxukm/image/upload/v1789663433/200lvl_litb9v.jpg" alt="200 LVL">
+                    </div>
+                </div>
+                <div class="slide-content">
+                    <div class="content-inner">
+                        <h1 class="slide-title serif-display">200 LVL</h1>
+                        <p class="slide-text">I began questioning my entire life choices here, not that I wasn't already questioning them, but I questioned them loudly. I remember reading for an exam and I was literally crying asking myself who sent me. Same story, blur... To love or to be seen? Omo to not do engineering. NEVER AGAIN (in Anthony kani's voice). Oh this was the season Seyi and I became friends. (Worth it like maddd).</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 4: 300 LVL -->
+            <div class="carousel-slide">
+                <div class="slide-image">
+                    <div class="image-frame">
+                        <img src="https://res.cloudinary.com/dtkluxukm/image/upload/v1789663438/300lvl_za9cuj.jpg" alt="300 LVL">
+                    </div>
+                </div>
+                <div class="slide-content">
+                    <div class="content-inner">
+                        <h1 class="slide-title serif-display">300 LVL</h1>
+                        <p class="slide-text">I began to loathe every single thing that existed within that entire obinze axis not that I wasn't already loathing everything before this moment, but I began to loathe it loudly. In this season, I ate more egg rolls, and ate more noodles. Oh and did I mention that since I entered that school till now, I haven't tried meshai? I sha think I took more pics. In this season, John Paul and I became oddly close (yazzzzz).</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 5: 400 LVL -->
+            <div class="carousel-slide">
+                <div class="slide-image">
+                    <div class="image-frame">
+                        <img src="https://res.cloudinary.com/dtkluxukm/image/upload/v1789663434/400lvl_awe5jh.jpg" alt="400 LVL">
+                    </div>
+                </div>
+                <div class="slide-content">
+                    <div class="content-inner">
+                        <h1 class="slide-title serif-display">400 LVL</h1>
+                        <p class="slide-text">This season pushed me beyond measure in a good way. I tried new things, I pitched, I built startups and apps, and digital projects and I failed a lot. And I also added weight, I was very inconsistent with working out, and traveled on my own. Did IT, met cool Yoruba people, my spark was now shining. But even though! I began to detest the idea of the course I was studying. Not that I hadn't detested it since, I just began to detest it loudly.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 6: 500 LVL -->
+            <div class="carousel-slide">
+                <div class="slide-image">
+                    <div class="image-frame">
+                        <img src="https://res.cloudinary.com/dtkluxukm/image/upload/v1789663441/500lvl_mczsix.jpg" alt="500 LVL">
+                    </div>
+                </div>
+                <div class="slide-content">
+                    <div class="content-inner">
+                        <h1 class="slide-title serif-display">500 LVL</h1>
+                        <p class="slide-text">The story sha long. Became so unmotivated, coded more, worked away my social life, began my career in DevOps, participated in 3 hackathons, won none. Had a full circle moment and realized that I actually have amazing people in my circle... Exams killed me 26 different times, became extremely grateful yet super anxious cause I have really bad anxiety. Became more opinionated. And that's the gist for now sha.</p>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Navigation Arrows -->
+        <button class="nav-button nav-prev" id="prevBtn" aria-label="Previous slide">
+            ← 
+        </button>
+        <button class="nav-button nav-next" id="nextBtn" aria-label="Next slide">
+            →
+        </button>
+        
+        <!-- Progress Indicators -->
+        <div class="progress-indicators" id="indicators"></div>
+        
+        <!-- Floating Link Deck -->
+        <div class="floating-deck">
+            <a href="/" class="floating-link">[Back to Home]</a>
+            <a href="https://webdesignking.online" target="_blank" rel="noopener noreferrer" class="floating-link">[See My Portfolio]</a>
+        </div>
+        
+    </div>
+    
+    <script>
+        const carousel = document.getElementById('carousel');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const indicatorsContainer = document.getElementById('indicators');
+        
+        let currentSlide = 0;
+        const totalSlides = 6;
+        
+        // Create progress indicators
+        function createIndicators() {
+            for (let i = 0; i < totalSlides; i++) {
+                const dash = document.createElement('div');
+                dash.className = 'progress-dash';
+                if (i === 0) dash.classList.add('active');
+                dash.addEventListener('click', () => goToSlide(i));
+                indicatorsContainer.appendChild(dash);
+            }
+        }
+        
+        // Update carousel position
+        function updateCarousel() {
+            const offset = currentSlide * 100;
+            carousel.style.transform = `translateX(-${offset}%)`;
+            
+            // Update progress indicators
+            document.querySelectorAll('.progress-dash').forEach((dash, index) => {
+                dash.classList.toggle('active', index === currentSlide);
+            });
+        }
+        
+        // Navigation functions
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % totalSlides;
+            updateCarousel();
+        }
+        
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+            updateCarousel();
+        }
+        
+        function goToSlide(index) {
+            currentSlide = index;
+            updateCarousel();
+        }
+        
+        // Event listeners
+        nextBtn.addEventListener('click', nextSlide);
+        prevBtn.addEventListener('click', prevSlide);
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+        
+        // Initialize
+        createIndicators();
+        updateCarousel();
+    </script>
+</body>
+</html>
