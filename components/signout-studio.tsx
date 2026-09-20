@@ -21,6 +21,19 @@ const SEED_CAMPUS_STAMPS = [
   { id: 'seed-4', text: 'Great', color: '#2c62a8', position: [-0.2, -0.5, 0.28] as [number, number, number], rotation: [0.08, 0.1, 0] as [number, number, number] },
 ] as const
 
+const DEFAULT_STAMP_SCALE: [number, number, number] = [1.8, 1.8, 0.1]
+
+function asVec3(value: unknown): [number, number, number] {
+  if (Array.isArray(value)) {
+    return [Number(value[0]) || 0, Number(value[1]) || 0, Number(value[2]) || 0]
+  }
+  if (value && typeof value === 'object') {
+    const vector = value as { x?: number; y?: number; z?: number }
+    return [vector.x || 0, vector.y || 0, vector.z || 0]
+  }
+  return [0, 0, 0]
+}
+
 function createStampImage(text: string, color: string) {
   const canvas = document.createElement('canvas')
   canvas.width = 1024
@@ -32,16 +45,61 @@ function createStampImage(text: string, color: string) {
   context.font = "italic bold 100px 'Nunito', 'Rubik', sans-serif"
   context.textAlign = 'center'
   context.textBaseline = 'middle'
-  context.fillText(text, 512, 512)
+  const maxWordsPerLine = 5
+  const lineHeight = 130
+  const lines: string[] = []
+  text.trim().split(/\r?\n/).forEach((paragraph) => {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean)
+    if (words.length === 0) {
+      lines.push('')
+      return
+    }
+    for (let index = 0; index < words.length; index += maxWordsPerLine) {
+      lines.push(words.slice(index, index + maxWordsPerLine).join(' '))
+    }
+  })
+  const startY = 512 - ((Math.max(lines.length, 1) - 1) * lineHeight) / 2
+  if (lines.length === 0) {
+    context.fillText(text, 512, 512)
+  } else {
+    lines.forEach((line, index) => {
+      context.fillText(line, 512, startY + index * lineHeight)
+    })
+  }
   return canvas.toDataURL('image/png')
 }
 
 type Stamp = {
   id: string | number
+  text: string
+  color: string
   textImage: string
   position: [number, number, number]
   rotation: [number, number, number]
   scale: [number, number, number]
+}
+
+function hydrateStoredStamps(raw: unknown): Stamp[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((stamp: any) => {
+    const text = typeof stamp?.text === 'string' ? stamp.text : ''
+    const color = typeof stamp?.color === 'string' ? stamp.color : COLORS[1].value
+    const textImage = text
+      ? createStampImage(text, color)
+      : typeof stamp?.textImage === 'string'
+        ? stamp.textImage
+        : ''
+    if (!textImage) return []
+    return [{
+      id: stamp.id ?? Date.now(),
+      text,
+      color,
+      textImage,
+      position: asVec3(stamp.position),
+      rotation: asVec3(stamp.rotation),
+      scale: DEFAULT_STAMP_SCALE,
+    }]
+  })
 }
 
 function StampDecal({ stamp }: { stamp: Stamp }) {
@@ -133,15 +191,17 @@ const ABOUT_STORY = [
 export function SignoutStudio() {
   const [isMounted, setIsMounted] = useState(false)
   const [stamps, setStamps] = useState<Stamp[]>(() => {
-    if (typeof window === 'undefined') return []
-    const localData = window.localStorage.getItem('my_shirt_canvas_stamps')
-    try {
-      return localData ? JSON.parse(localData) : []
-    } catch {
-      return []
+    if (typeof window !== 'undefined') {
+      const localData = localStorage.getItem('my_shirt_canvas_stamps')
+      if (!localData) return []
+      try {
+        return hydrateStoredStamps(JSON.parse(localData))
+      } catch {
+        return []
+      }
     }
+    return []
   })
-  const [storageReady, setStorageReady] = useState(false)
   const [active, setActive] = useState(COLORS[0]); const [drawing, setDrawing] = useState(false); const [zoomLevel, setZoomLevel] = useState(4); const [modalOpen, setModalOpen] = useState(false); const [isPlacingStamp, setIsPlacingStamp] = useState(false); const [stampMessage, setStampMessage] = useState(''); const [stampColor, setStampColor] = useState(COLORS[0].value); const [pointer, setPointer] = useState({ x: 0, y: 0 }); const [supportOpen, setSupportOpen] = useState(false); const [copiedAccount, setCopiedAccount] = useState<string | null>(null); const [markerTrayOpen, setMarkerTrayOpen] = useState(false); const [showGuide, setShowGuide] = useState(true); const groupRef = useRef<THREE.Group>(null)
   useEffect(() => {
     setIsMounted(true)
@@ -152,14 +212,33 @@ export function SignoutStudio() {
     return () => fontLink.remove()
   }, [])
   useEffect(() => {
-    if (stamps.length === 0 && typeof window !== 'undefined' && !window.localStorage.getItem('my_shirt_canvas_stamps')) {
-      setStamps(SEED_CAMPUS_STAMPS.map((seed) => ({ ...seed, textImage: createStampImage(seed.text, seed.color), scale: [1.8, 1.8, 0.1] as [number, number, number] })))
+    if (typeof window === 'undefined') return
+    const localData = localStorage.getItem('my_shirt_canvas_stamps')
+    if (localData) {
+      try {
+        setStamps(hydrateStoredStamps(JSON.parse(localData)))
+      } catch {
+        setStamps([])
+      }
+      return
     }
-    setStorageReady(true)
+    setStamps(SEED_CAMPUS_STAMPS.map((seed) => ({
+      ...seed,
+      textImage: createStampImage(seed.text, seed.color),
+      scale: DEFAULT_STAMP_SCALE,
+    })))
   }, [])
   useEffect(() => {
-    if (storageReady && stamps.length > 0) window.localStorage.setItem('my_shirt_canvas_stamps', JSON.stringify(stamps))
-  }, [stamps, storageReady])
+    if (!stamps || stamps.length === 0) return
+    const sanitizedData = stamps.map((stamp) => ({
+      id: stamp.id,
+      text: stamp.text,
+      color: stamp.color,
+      position: Array.isArray(stamp.position) ? stamp.position : [(stamp.position as any).x || 0, (stamp.position as any).y || 0, (stamp.position as any).z || 0],
+      rotation: Array.isArray(stamp.rotation) ? stamp.rotation : [(stamp.rotation as any).x || 0, (stamp.rotation as any).y || 0, (stamp.rotation as any).z || 0],
+    }))
+    localStorage.setItem('my_shirt_canvas_stamps', JSON.stringify(sanitizedData))
+  }, [stamps])
   const rotate = (axis: 'x' | 'y', amount: number) => { if (groupRef.current) groupRef.current.rotation[axis] += amount }
   const chooseMarker = (item: typeof COLORS[number]) => { setActive(item); setStampColor(item.value); setMarkerTrayOpen(false) }
   const closeModal = () => { setModalOpen(false); setStampMessage('') }
@@ -168,36 +247,17 @@ export function SignoutStudio() {
   const handleStampPlaced = () => { setIsPlacingStamp(false); setStampMessage('') }
   const handleTextReset = () => { setStampMessage('') }
   const handleStampCreate = (point: THREE.Vector3, rotation: THREE.Euler) => {
-    const textCanvas = document.createElement('canvas')
-    textCanvas.width = 1024
-    textCanvas.height = 1024
-    const context = textCanvas.getContext('2d')
-    if (!context) return
-    context.clearRect(0, 0, 1024, 1024)
-    context.fillStyle = stampColor
-    context.font = "italic bold 100px 'Nunito', 'Rubik', sans-serif"
-    context.textAlign = 'center'
-    context.textBaseline = 'middle'
-
-    const maxWordsPerLine = 5
-    const lineHeight = 130
-    const lines: string[] = []
-    stampMessage.trim().split(/\r?\n/).forEach((paragraph) => {
-      const words = paragraph.trim().split(/\s+/).filter(Boolean)
-      if (words.length === 0) {
-        lines.push('')
-        return
-      }
-      for (let index = 0; index < words.length; index += maxWordsPerLine) {
-        lines.push(words.slice(index, index + maxWordsPerLine).join(' '))
-      }
-    })
-
-    const startY = 512 - ((lines.length - 1) * lineHeight) / 2
-    lines.forEach((line, index) => {
-      context.fillText(line, 512, startY + index * lineHeight)
-    })
-    setStamps((current) => [...current, { id: Date.now(), textImage: textCanvas.toDataURL('image/png'), position: [point.x, point.y, point.z], rotation: [rotation.x, rotation.y, rotation.z], scale: [1.8, 1.8, 0.1] }])
+    const text = stampMessage.trim()
+    if (!text) return
+    setStamps((current) => [...current, {
+      id: Date.now(),
+      text,
+      color: stampColor,
+      textImage: createStampImage(text, stampColor),
+      position: [point.x, point.y, point.z],
+      rotation: [rotation.x, rotation.y, rotation.z],
+      scale: DEFAULT_STAMP_SCALE,
+    }])
   }
   const handleSign = () => { if (!stampMessage.trim()) return; setModalOpen(false); setIsPlacingStamp(true) }
   return <main className="relative h-dvh w-full overflow-hidden bg-[#0eb0ab]"><div className="absolute inset-0">{isMounted ? (<Scene zoomLevel={zoomLevel} groupRef={groupRef} isPlacingStamp={isPlacingStamp} stampMessage={stampMessage} stampColor={stampColor} onStampPlaced={handleStampPlaced} stamps={stamps} onStampCreate={handleStampCreate} />) : (<div className="fixed inset-0 bg-[#0eb0ab]" />)}</div>{isPlacingStamp && <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 -translate-x-1/2 animate-pulse whitespace-nowrap rounded-full border border-white/30 bg-[#087f7b]/90 px-4 py-2 text-xs font-medium text-white shadow-xl backdrop-blur-xl">Tap anywhere on the white shirt to place your signature!</div>}{showGuide && <div className="absolute inset-0 z-50 grid place-items-center bg-black/25 p-5 backdrop-blur-md"><section role="dialog" aria-modal="true" aria-labelledby="guide-title" className="relative w-full max-w-md rounded-2xl bg-white p-5 text-[#183b38] shadow-2xl md:p-6"><button type="button" onClick={() => setShowGuide(false)} aria-label="Close welcome guide" className="absolute right-3 top-3 rounded-full p-1.5 text-[#41635f] transition hover:bg-[#e9f7f5] hover:text-[#0eb0ab]"><X aria-hidden="true" /></button><div className="mb-5 pr-8"><h1 id="guide-title" className="text-xl font-black tracking-tight text-[#0eb0ab] md:text-2xl">Welcome to My Shirt Canvas</h1><p className="mt-2 text-sm text-[#41635f]">Digital university sign-out culture.</p></div><ol className="flex flex-col gap-3 text-sm leading-5 text-[#41635f]"><li>1. Click the Sign Pen Icon on the left toolbar to open the signature drawer.</li><li>2. Input your first name, initials, or nickname (maximum 15 characters) and choose an ink color.</li><li>3. Click &apos;sign your name&apos; and tap anywhere on the 3D shirt fabric to stamp it.</li><li>4. Drag to rotate the shirt, use +/- to zoom, or tap &apos;Buy Me Coffee&apos; to support.</li></ol><button type="button" onClick={() => setShowGuide(false)} className="mt-6 w-full rounded-xl bg-[#0eb0ab] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#087f7b]">Get Started</button></section></div>}{modalOpen && <div className="absolute inset-0 z-40 grid place-items-center bg-black/20 p-5 backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-labelledby="signature-title" className="w-full max-w-md rounded-3xl border border-white/30 bg-[#087f7b]/95 p-5 text-white shadow-2xl"><div className="mb-4 flex items-start justify-between"><div><p className="text-xs uppercase tracking-[0.24em] text-white/60">Leave your mark</p><h2 id="signature-title" className="mt-1 text-xl font-semibold">Sign my shirt</h2></div><button type="button" aria-label="Close signature modal" onClick={closeModal} className="text-2xl text-white/70">X</button></div><textarea maxLength={50} value={stampMessage} onChange={(e) => setStampMessage(e.target.value)} placeholder="Input your first name, nickname or intials" className="min-h-32 w-full resize-none rounded-2xl border border-white/20 bg-white/10 p-3 text-sm text-white outline-none placeholder:text-white/50 focus:border-white/60" /><p className="mt-2 text-right text-xs text-white/60">{stampMessage.length} / 50</p><div className="mt-4 grid grid-cols-4 gap-2">{COLORS.map((item) => <button key={item.name} type="button" onClick={() => chooseMarker(item)} className={`rounded-xl border p-2 text-xs ${stampColor === item.value ? 'border-white bg-white/20' : 'border-white/20 bg-white/5'}`}><span className={`mx-auto mb-1 block h-7 w-2.5 rounded-full ${item.ink}`} />{item.name}</button>)}</div><div className="mt-5 flex gap-2"><button type="button" onClick={handleSign} disabled={!stampMessage.trim()} className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#087f7b] disabled:opacity-40">Sign Shirt</button><button type="button" onClick={closeModal} className="rounded-xl border border-white/30 px-4 py-3 text-sm">Cancel</button></div></section></div>}<aside className="absolute right-3 top-1/2 z-10 flex w-12 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border border-white/30 bg-[#087f7b]/70 p-1 shadow-2xl backdrop-blur-xl"><div className={`${markerTrayOpen ? 'flex' : 'hidden'} absolute right-0 bottom-full mb-2 w-12 flex-col items-center justify-center gap-3 rounded-xl border border-white/25 bg-[#087f7b]/95 p-1 shadow-xl backdrop-blur-xl md:hidden`}>{COLORS.map((item) => <Marker key={item.name} item={item} active={active.name === item.name} onClick={() => chooseMarker(item)} />)}</div><button type="button" aria-label="Open signature modal" onClick={() => setModalOpen(true)} className="studio-control"><span className="-rotate-45 text-xl">✎</span></button><div className="h-px w-8 bg-white/30" /><div className="flex flex-col gap-1"><button type="button" aria-label="Rotate left" onClick={() => rotate('y', -0.22)} className="studio-control"><ArrowLeft size={15} /></button><button type="button" aria-label="Rotate right" onClick={() => rotate('y', 0.22)} className="studio-control"><ArrowRight size={15} /></button><button type="button" aria-label="Rotate up" onClick={() => rotate('x', -0.16)} className="studio-control"><ArrowUp size={15} /></button><button type="button" aria-label="Rotate down" onClick={() => rotate('x', 0.16)} className="studio-control"><ArrowDown size={15} /></button><button type="button" aria-label="Reset rotation" onClick={() => groupRef.current?.rotation.set(0.02, 0, 0)} className="studio-control"><RotateCcw size={14} /></button></div><div className="h-px w-8 bg-white/30" /><div className="flex flex-col gap-1"><button type="button" aria-label="Zoom out" onClick={() => setZoomLevel((v) => Math.min(8, v + 0.5))} className="studio-control text-lg">−</button><button type="button" aria-label="Zoom in" onClick={() => setZoomLevel((v) => Math.max(1.5, v - 0.5))} className="studio-control text-lg">+</button></div></aside><div className="absolute bottom-3 left-3 z-20 flex flex-col gap-1 rounded-xl border border-white/25 bg-[#087f7b]/70 p-1 backdrop-blur-xl sm:flex-row"><button type="button" onClick={() => {}} className="rounded-lg px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15"><a href="https://www.webdesignking.online">My Portfolio</a></button></div><button type="button" onClick={() => setSupportOpen(true)} className="absolute bottom-5 right-5 z-30 rounded-full border border-white/30 bg-[#087f7b]/85 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur transition hover:bg-[#087f7b]">Buy Me Coffee</button>{supportOpen && <div className="absolute inset-0 z-50 grid place-items-center bg-black/25 p-5 backdrop-blur-md"><section role="dialog" aria-modal="true" aria-labelledby="support-title" className="w-full max-w-lg rounded-[2rem] border border-white/50 bg-white/90 p-6 text-[#183b38] shadow-2xl"><div className="mb-6 text-center"><h2 id="support-title" className="text-2xl font-black">Support My Next Chapter</h2><p className="mt-2 text-sm text-[#41635f]">Gifts are entirely optional but highly appreciated!</p></div><div className="space-y-3"><div className="rounded-2xl border border-[#0e8f89]/15 bg-[#e9f7f5] p-4"><p className="text-[11px] font-bold tracking-[0.16em] text-[#0e8f89]">NAIRA TRANSFER</p><p className="mt-2 font-bold">Opay</p><div className="mt-2 flex items-center justify-between gap-3"><span className="text-lg font-black tracking-wide">9157632234</span><button type="button" aria-label="Copy Naira account number" onClick={() => copyAccount('9157632234')} className="rounded-xl bg-[#0e8f89] p-2 text-white hover:bg-[#087f7b]">{copiedAccount === '9157632234' ? <Check size={16} /> : <Copy size={16} />}</button></div><p className="mt-1 text-xs text-[#41635f]">Great Chukwuebuka Ibewuike</p></div><div className="rounded-2xl border border-[#0e8f89]/15 bg-[#f1f2f8] p-4"><p className="text-[11px] font-bold tracking-[0.16em] text-[#4d5ca8]">DOLLAR TRANSFER</p><p className="mt-2 font-bold">Lead Bank</p><div className="mt-2 flex items-center justify-between gap-3"><span className="text-lg font-black tracking-wide">214271831502</span><button type="button" aria-label="Copy Dollar account number" onClick={() => copyAccount('214271831502')} className="rounded-xl bg-[#4d5ca8] p-2 text-white hover:bg-[#39498f]">{copiedAccount === '214271831502' ? <Check size={16} /> : <Copy size={16} />}</button></div><p className="mt-1 text-xs text-[#41635f]">Great Chukwuebuka Ibewuike</p></div></div><button type="button" onClick={() => setSupportOpen(false)} className="mt-6 w-full rounded-xl border border-[#183b38]/15 px-4 py-3 text-sm font-semibold hover:bg-[#183b38] hover:text-white">Close</button></section></div>}</main> }
