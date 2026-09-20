@@ -3,9 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Sign-Out Studio | Leave Your Mark',
+  title: 'Sign Out with WDK',
   description: 'A digital Nigerian university sign-out shirt for campus memories, signatures and goodbyes.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
