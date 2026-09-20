@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas, useThree } from '@react-three/fiber'
-import { Center, Environment, OrbitControls, useGLTF, useTexture } from '@react-three/drei'
+import { Center, Environment, Html, OrbitControls, useGLTF, useProgress, useTexture } from '@react-three/drei'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, Copy, RotateCcw, Undo2, X } from 'lucide-react'
@@ -185,9 +185,31 @@ function CameraController({ zoomLevel, controlsRef }: { zoomLevel: number; contr
   return null
 }
 
+function CanvasLoader() {
+  const { progress } = useProgress()
+  return (
+    <Html center>
+      <div className="flex w-48 select-none flex-col items-center justify-center pointer-events-none text-center">
+        <span className="mb-3 text-xs font-semibold uppercase tracking-widest text-white">
+          Loading Studio
+        </span>
+        <div className="relative h-1.5 w-full overflow-hidden rounded-full border border-white/40 bg-white/10">
+          <div
+            className="h-full bg-white transition-all duration-300 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="mt-1.5 font-mono text-[10px] text-white/70">
+          {Math.round(progress)}%
+        </span>
+      </div>
+    </Html>
+  )
+}
+
 function Scene({ zoomLevel, groupRef, isPlacingStamp, stampMessage, stampColor, onStampPlaced, stamps, onStampCreate }: { zoomLevel: number; groupRef: React.RefObject<THREE.Group | null>; isPlacingStamp: boolean; stampMessage: string; stampColor: string; onStampPlaced: () => void; stamps: Stamp[]; onStampCreate: (point: THREE.Vector3, rotation: THREE.Euler) => void }) {
   const controlsRef = useRef<any>(null)
-  return <Canvas shadows camera={{ position: [0, 0, zoomLevel], fov: 45 }}><color attach="background" args={['#0eb0ab']} /><ambientLight intensity={1.5} /><directionalLight castShadow position={[4, 6, 5]} intensity={2} /><Environment preset="studio" /><CameraController zoomLevel={zoomLevel} controlsRef={controlsRef} /><Suspense fallback={null}><Center disableY={false} disableX={false} disableZ={false}><ShirtMesh groupRef={groupRef} isPlacingStamp={isPlacingStamp} stampMessage={stampMessage} stampColor={stampColor} onStampPlaced={onStampPlaced} stamps={stamps} onStampCreate={onStampCreate} /></Center></Suspense><OrbitControls ref={controlsRef} makeDefault enabled={!isPlacingStamp} enablePan={false} minDistance={1.5} maxDistance={8} enableDamping dampingFactor={0.08} /></Canvas>
+  return <Canvas shadows camera={{ position: [0, 0, zoomLevel], fov: 45 }}><color attach="background" args={['#0eb0ab']} /><ambientLight intensity={1.5} /><directionalLight castShadow position={[4, 6, 5]} intensity={2} /><Environment preset="studio" /><CameraController zoomLevel={zoomLevel} controlsRef={controlsRef} /><Suspense fallback={<CanvasLoader />}><Center disableY={false} disableX={false} disableZ={false}><ShirtMesh groupRef={groupRef} isPlacingStamp={isPlacingStamp} stampMessage={stampMessage} stampColor={stampColor} onStampPlaced={onStampPlaced} stamps={stamps} onStampCreate={onStampCreate} /></Center></Suspense><OrbitControls ref={controlsRef} makeDefault enabled={!isPlacingStamp} enablePan={false} minDistance={1.5} maxDistance={8} enableDamping dampingFactor={0.08} /></Canvas>
 }
 
 function Marker({ item, active, onClick }: { item: typeof COLORS[number]; active: boolean; onClick: () => void }) { return <button type="button" aria-label={`Use ${item.name} marker`} aria-pressed={active} onClick={onClick} className={`group relative flex h-10 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${active ? 'bg-white/20 ring-1 ring-white ring-offset-2 ring-offset-[#087f7b]' : 'hover:bg-white/10'}`}><span className={`relative h-9 w-2.5 rounded-b-full rounded-t-sm ${item.ink} shadow-[2px_4px_0_rgba(0,0,0,.18)]`}><span className="absolute -top-1 left-0 h-2 w-3 rounded-t-sm bg-white/50" /><span className="absolute -bottom-2 left-[3px] h-2 w-1.5 border-x-[3px] border-t-4 border-transparent border-t-current" /></span><span className="sr-only">{item.name}</span></button> }
