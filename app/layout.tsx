@@ -12,6 +12,12 @@ export const metadata = {
     siteName: "My Shirt Canvas - Sign Out with WDK",
     locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: "https://myshirtcanvas.vercel.app/opengraph-image.png",
+        width: 1167,
+        height: 611,
+        alt: "My Shirt Canvas Digital Sign-Out Studio Preview Screen",
   },
 };
 
