@@ -2,27 +2,19 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
-export const metadata: Metadata = {
-  title: 'Sign Out with WDK',
-  description: 'A digital Nigerian university sign-out shirt for campus memories, signatures and goodbyes.',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+export const metadata = {
+  title: "My Shirt Canvas - Sign Out with WDK",
+  description: "Leave your signature flat on my digital university sign-out shirt! A real-time shared milestone guestbook built by Web Design King",
+  openGraph: {
+    title: "My Shirt Canvas - Sign Out with WDK",
+    description: "Leave your signature flat on my digital university sign-out shirt! A real-time shared milestone guestbook built by Engr. Great.",
+    url: "https://myshirtcanvas.vercel.app/", 
+    siteName: "My Shirt Canvas - Sign Out with WDK",
+    locale: "en_US",
+    type: "website",
   },
-}
+};
+
 
 export const viewport: Viewport = {
   colorScheme: 'light dark',
