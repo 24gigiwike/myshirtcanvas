@@ -18,6 +18,8 @@ export const metadata = {
         width: 1167,
         height: 611,
         alt: "My Shirt Canvas Digital Sign-Out Studio Preview Screen",
+      },
+      ],
   },
 };
 
